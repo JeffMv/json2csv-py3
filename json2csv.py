@@ -20,7 +20,7 @@ except ModuleNotFoundError:
     jsmin = lambda x: x
 
 
-__version__ = "0.2.0.1"
+__version__ = "0.2.0.2"
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -116,7 +116,7 @@ class Json2Csv(object):
         else:
             out = self.rows
         with open(filename, 'wb+') as f:
-            writer = csv.DictWriter(f, list(self.key_map.keys()))
+            writer = csv.DictWriter(f, list(self.key_map.keys()), dialect='outputdelimiter')
             if write_header:
                 writer.writeheader()
             writer.writerows(out)
@@ -146,6 +146,8 @@ def init_parser():
                         help="Process each line of JSON file separately")
     parser.add_argument('-o', '--output-csv', type=str, default=None,
                         help="Path to csv file to output")
+    parser.add_argument('-d', '--delimiter', type=str, default=",",
+                        help="1 character CSV delimiter. Default is comma ','")
     parser.add_argument(
         '--strings', help="Convert lists, sets, and dictionaries fully to comma-separated strings.", action="store_true", default=True)
     parser.add_argument('--no-header', action="store_true",
@@ -161,7 +163,13 @@ if __name__ == '__main__':
     # levels_of_log = {0:logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
     # print(f"verbose: {args.verbose}, level: ...")
     # logging.basicConfig(level=levels_of_log[args.verbose])  # not working if alreary made earlier
-
+    
+    special_inputs_map = {"\\t":"\t", "\\n":"\n"}
+    csv_delimiter = special_inputs_map.get(args.delimiter, args.delimiter)
+    
+    if csv_delimiter:
+        csv.register_dialect('outputdelimiter', delimiter=csv_delimiter);
+    
     key_map = json.loads(jsmin(args.key_map.read()))
     loader = None
     if args.each_line:
