@@ -60,6 +60,27 @@ Use this outline file:
       "collection": "nodes"
     }
 
+If you have installed the extra dependancies, you will be able to use comments:
+
+    {
+      "map": [
+        ["author", "source.author"],
+        // this is a comment
+        ["message", "message.original"]
+      ],
+      //// "collection" is used when the JSON's root is a dictionary.
+      //// You pass in the key that contains your data
+      // "collection": "nodes"
+
+      // When the root of the JSON is a dictionary but the root keys should be ignored.
+      // For instance in the following architecture
+      // {"12": {"productId": 12, "brand": "Apple"}, "13":{"productId": 13, "brand": Microsoft}}
+      // the root keys "12" and "13" are variable and you do not know them beforehand.
+      // To do that, you would drop them with the option
+      "dropRootKeys": true
+    }
+
+
 ## Generating outline files
 
 To automatically generate an outline file from a json file:
@@ -93,3 +114,8 @@ Is parsed into
 |ham, turkey, egg salad|cheese: cheddar, swiss<br>spread: mustard, mayonaise, tapenade|
 
 The class variables `SEP_CHAR`, `KEY_VAL_CHAR`, `DICT_SEP_CHAR`, `DICT_OPEN`, and `DICT_CLOSE` can be changed to modify the output formatting. For nested dictionaries, there are settings that have been commented out that work well. 
+
+
+## Upcoming features
+
+- [ ] Ability to use JQ filters to further control the CSV output
