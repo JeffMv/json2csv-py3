@@ -13,12 +13,14 @@ import logging
 from collections import OrderedDict
 from functools import reduce
 
+__version__ = "0.2.0.0"
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.WARNING)
 
 class Json2Csv(object):
     """Process a JSON object to a CSV file"""
     collection = None
+    root_array = False
 
     # Better for single-nested dictionaries
     SEP_CHAR = ', '
@@ -51,6 +53,8 @@ class Json2Csv(object):
         self.key_map = key_map
         if 'collection' in outline:
             self.collection = outline['collection']
+        elif 'dropRootKeys' in outline:
+            self.root_array = True
 
     def load(self, json_file):
         self.process_each(json.load(json_file))
@@ -60,6 +64,8 @@ class Json2Csv(object):
         """
         if self.collection and self.collection in data:
             data = data[self.collection]
+        elif self.root_array:
+            data = list(data.values()) if isinstance(data, dict) else data
 
         for d in data:
             logging.info(d)
@@ -134,12 +140,17 @@ def init_parser():
                         help="Path to csv file to output")
     parser.add_argument(
         '--strings', help="Convert lists, sets, and dictionaries fully to comma-separated strings.", action="store_true", default=True)
-
+    parser.add_argument('--verbose', type=int, default=0, help="Level of logs")
+    
     return parser
 
 if __name__ == '__main__':
     parser = init_parser()
     args = parser.parse_args()
+    
+    # levels_of_log = {0:logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
+    # print(f"verbose: {args.verbose}, level: ...")
+    # logging.basicConfig(level=levels_of_log[args.verbose])  # not working if alreary made earlier
 
     key_map = json.load(args.key_map)
     loader = None

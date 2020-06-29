@@ -26,6 +26,11 @@ def coll_iter(f, coll_key):
     for obj in data[coll_key]:
         yield obj
 
+def dropkey_iter(f):
+    data = json.load(f)
+    for obj in (data.values() if isinstance(data, dict) else data):
+        yield obj
+
 def gather_key_map(iterator):
     key_map = {}
     for d in iterator:
@@ -41,16 +46,20 @@ def key_map_to_list(key_map):
     # in the correct order.
     return [(path_join(k, '_'), path_join(k)) for k in sorted(key_map.keys())]
 
-def make_outline(json_file, each_line, collection_key):
+def make_outline(json_file, each_line, collection_key, drop_root_keys=False):
     if each_line:
         iterator = line_iter(json_file)
-    else:
+    elif collection_key:
         iterator = coll_iter(json_file, collection_key)
+    else:
+        iterator = dropkey_iter(json_file)
 
     key_map = gather_key_map(iterator)
     outline = {'map': key_map_to_list(key_map)}
     if collection_key:
         outline['collection'] = collection_key
+    if drop_root_keys:
+        outline['dropRootKeys'] = True
 
     return outline
 
@@ -62,17 +71,19 @@ def init_parser():
     parser.add_argument('-o', '--output-file', type=str, default=None,
                         help="Path to outline file to output")
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('-e', '--each-line', action="store_true", default=False,
+    group.add_argument('-e', '--each-line', action="store_true",
                        help="Process each line of JSON file separately")
     group.add_argument('-c', '--collection', type=str, default=None,
                        help="Key in JSON of array to process", metavar="KEY")
+    group.add_argument('-d', '--dropRootKeys', action="store_true",
+                       help="Process only values of a JSON file that has a dictionary as the root")
 
     return parser
 
 def main():
     parser = init_parser()
     args = parser.parse_args()
-    outline = make_outline(args.json_file, args.each_line, args.collection)
+    outline = make_outline(args.json_file, args.each_line, args.collection, args.dropRootKeys)
     outfile = args.output_file
     if outfile is None:
         fileName, fileExtension = os.path.splitext(args.json_file.name)
