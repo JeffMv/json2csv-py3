@@ -20,7 +20,7 @@ except ModuleNotFoundError:
     jsmin = lambda x: x
 
 
-__version__ = "0.2.0.0"
+__version__ = "0.2.0.1"
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -106,7 +106,7 @@ class Json2Csv(object):
         else:
             return str(item)
 
-    def write_csv(self, filename='output.csv', make_strings=False):
+    def write_csv(self, filename='output.csv', make_strings=False, write_header=True):
         """Write the processed rows to the given filename
         """
         if (len(self.rows) <= 0):
@@ -117,7 +117,8 @@ class Json2Csv(object):
             out = self.rows
         with open(filename, 'wb+') as f:
             writer = csv.DictWriter(f, list(self.key_map.keys()))
-            writer.writeheader()
+            if write_header:
+                writer.writeheader()
             writer.writerows(out)
 
 
@@ -147,6 +148,8 @@ def init_parser():
                         help="Path to csv file to output")
     parser.add_argument(
         '--strings', help="Convert lists, sets, and dictionaries fully to comma-separated strings.", action="store_true", default=True)
+    parser.add_argument('--no-header', action="store_true",
+                        help="Process each line of JSON file separately")
     parser.add_argument('--verbose', type=int, default=0, help="Level of logs")
     
     return parser
@@ -173,4 +176,4 @@ if __name__ == '__main__':
         fileName, fileExtension = os.path.splitext(args.json_file.name)
         outfile = fileName + '.csv'
 
-    loader.write_csv(filename=outfile, make_strings=args.strings)
+    loader.write_csv(filename=outfile, make_strings=args.strings, write_header=not args.no_header)
