@@ -1,5 +1,6 @@
 import unittest
 import json
+import os
 from json2csv import Json2Csv, MultiLineJson2Csv
 from gen_outline import make_outline
 
@@ -112,8 +113,48 @@ class TestJson2Csv(unittest.TestCase):
         third_row = loader.rows[2]
         self.assertEqual(third_row['author'], 'Me too')
 
+    def test_custom_delimiter(self):
+        ## Credits to James Hartt: https://github.com/jameshartt/json2csv/commit/a032b6862b04f59498b39eb7c9dc494be6c233b0
+        outline = {"map": [['author', 'source.author'], ['message', 'message.original']], "collection": "nodes"}
+        loader = Json2Csv(outline)
+        with open('fixtures/data.json') as f:
+            loader.load(f)
+
+        filename = "test.csv"
+        loader.write_csv(filename=filename, delimiter=';')
+        output = open(filename, "r")
+        csvString = output.read()
+
+        author = 'author'
+        delimiterSubstring = csvString[len(author):len(author)+1]
+
+        self.assertEqual(delimiterSubstring, ';')
+
+        os.remove(filename)
+
+    def test_default_delimiter(self):
+        ## Credits to James Hartt: https://github.com/jameshartt/json2csv/commit/a032b6862b04f59498b39eb7c9dc494be6c233b0
+        outline = {"map": [['author', 'source.author'], ['message', 'message.original']], "collection": "nodes"}
+        loader = Json2Csv(outline)
+        with open('fixtures/data.json') as f:
+            loader.load(f)
+
+        filename = "test.csv"
+        loader.write_csv(filename=filename)
+        output = open(filename, "r")
+        csvString = output.read()
+
+        author = 'author'
+        delimiterSubstring = csvString[len(author):len(author)+1]
+
+        self.assertEqual(delimiterSubstring, ',')
+
+        os.remove(filename)
+        
+        
     def test_write_csv(self):
         pass
+    
 
 
 class TestMultiLineJson2Csv(unittest.TestCase):

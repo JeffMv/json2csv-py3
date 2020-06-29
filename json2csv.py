@@ -106,7 +106,7 @@ class Json2Csv(object):
         else:
             return str(item)
 
-    def write_csv(self, filename='output.csv', make_strings=False, write_header=True):
+    def write_csv(self, filename='output.csv', make_strings=False, write_header=True, delimiter=","):
         """Write the processed rows to the given filename
         """
         if (len(self.rows) <= 0):
@@ -116,7 +116,7 @@ class Json2Csv(object):
         else:
             out = self.rows
         with open(filename, 'wb+') as f:
-            writer = csv.DictWriter(f, list(self.key_map.keys()), dialect='outputdelimiter')
+            writer = csv.DictWriter(f, list(self.key_map.keys()), delimiter=delimiter)
             if write_header:
                 writer.writeheader()
             writer.writerows(out)
@@ -167,9 +167,6 @@ if __name__ == '__main__':
     special_inputs_map = {"\\t":"\t", "\\n":"\n"}
     csv_delimiter = special_inputs_map.get(args.delimiter, args.delimiter)
     
-    if csv_delimiter:
-        csv.register_dialect('outputdelimiter', delimiter=csv_delimiter);
-    
     key_map = json.loads(jsmin(args.key_map.read()))
     loader = None
     if args.each_line:
@@ -184,4 +181,4 @@ if __name__ == '__main__':
         fileName, fileExtension = os.path.splitext(args.json_file.name)
         outfile = fileName + '.csv'
 
-    loader.write_csv(filename=outfile, make_strings=args.strings, write_header=not args.no_header)
+    loader.write_csv(filename=outfile, make_strings=args.strings, write_header=not args.no_header, delimiter=csv_delimiter)
