@@ -13,6 +13,13 @@ import logging
 from collections import OrderedDict
 from functools import reduce
 
+try:
+    from jsmin import jsmin
+except ModuleNotFoundError:
+    print('jsmin is not installed. Hence comments in outline file are disabled. Run "pip install jsmin" to install it')
+    jsmin = lambda x: x
+
+
 __version__ = "0.2.0.0"
 
 logging.basicConfig(level=logging.WARNING)
@@ -152,7 +159,7 @@ if __name__ == '__main__':
     # print(f"verbose: {args.verbose}, level: ...")
     # logging.basicConfig(level=levels_of_log[args.verbose])  # not working if alreary made earlier
 
-    key_map = json.load(args.key_map)
+    key_map = json.loads(jsmin(args.key_map.read()))
     loader = None
     if args.each_line:
         loader = MultiLineJson2Csv(key_map)

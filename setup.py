@@ -2,6 +2,11 @@ from pip.req import parse_requirements
 from setuptools import setup
 import uuid
 
+# What packages are optional?
+EXTRAS = {
+    'comments': ['jsmin'],
+}
+
 setup(
         name='json2csv',
         version='0.1',
@@ -12,5 +17,6 @@ setup(
         author='evidens',
         author_email='',
         description='Converts JSON files to CSV (pulling data from nested structures). Useful for Mongo data',
-        install_requires= [str(ir.req) for ir in parse_requirements('requirements.txt', session=uuid.uuid1())]
+        install_requires= [str(ir.req) for ir in parse_requirements('requirements.txt', session=uuid.uuid1())],
+        extras_require=EXTRAS,
 )
