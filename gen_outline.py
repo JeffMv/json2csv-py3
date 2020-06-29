@@ -6,7 +6,7 @@ import os, os.path
 def key_paths(d):
     def helper(path, x):
         if isinstance(x, dict):
-            for k, v in x.iteritems():
+            for k, v in x.items():
                 for ret in helper(path + [k], v):
                     yield ret
         elif isinstance(x, list):

@@ -8,8 +8,11 @@ except ImportError:
 import json
 import operator
 import os
-from collections import OrderedDict
 import logging
+
+from collections import OrderedDict
+from functools import reduce
+
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -67,7 +70,7 @@ class Json2Csv(object):
         """
         row = {}
 
-        for header, keys in self.key_map.items():
+        for header, keys in list(self.key_map.items()):
             try:
                 row[header] = reduce(operator.getitem, keys, item)
             except (KeyError, IndexError, TypeError):
@@ -79,16 +82,16 @@ class Json2Csv(object):
         str_rows = []
         for row in self.rows:
             str_rows.append({k: self.make_string(val)
-                             for k, val in row.items()})
+                             for k, val in list(row.items())})
         return str_rows
 
     def make_string(self, item):
         if isinstance(item, list) or isinstance(item, set) or isinstance(item, tuple):
             return self.SEP_CHAR.join([self.make_string(subitem) for subitem in item])
         elif isinstance(item, dict):
-            return self.DICT_OPEN + self.DICT_SEP_CHAR.join([self.KEY_VAL_CHAR.join([k, self.make_string(val)]) for k, val in item.items()]) + self.DICT_CLOSE
+            return self.DICT_OPEN + self.DICT_SEP_CHAR.join([self.KEY_VAL_CHAR.join([k, self.make_string(val)]) for k, val in list(item.items())]) + self.DICT_CLOSE
         else:
-            return unicode(item)
+            return str(item)
 
     def write_csv(self, filename='output.csv', make_strings=False):
         """Write the processed rows to the given filename
@@ -100,7 +103,7 @@ class Json2Csv(object):
         else:
             out = self.rows
         with open(filename, 'wb+') as f:
-            writer = csv.DictWriter(f, self.key_map.keys())
+            writer = csv.DictWriter(f, list(self.key_map.keys()))
             writer.writeheader()
             writer.writerows(out)
 
