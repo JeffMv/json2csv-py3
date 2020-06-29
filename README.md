@@ -9,6 +9,9 @@ Created specifically to convert multi-line Mongo query results to a single CSV (
     git clone https://github.com/evidens/json2csv.git
     cd json2csv
     pip install -r requirements.txt
+    # for more functionnality, you may want to also install
+    pip install jsmin  # allows comments in the outline file. See below
+
 
 ## Usage
 
@@ -19,6 +22,17 @@ Basic (convert from a JSON file to a CSV file in same path):
 Specify CSV file
 
     python json2csv.py /path/to/json_file.json /path/to/outline_file.json -o /some/other/file.csv
+
+Output a CSV file without header
+
+    python json2csv.py /path/to/json_file.json /path/to/outline_file.json -o /some/other/file.csv --no-header
+
+
+For custom CSV delimiter output:
+
+    python json2csv.py /path/to/json_file.json /path/to/outline_file.json --csv-delimiter ';'
+    # you can also output in *.tsv with '\t' as the delimiter
+
 
 For MongoDB (multiple JSON objects per file, which is non-standard JSON):
 

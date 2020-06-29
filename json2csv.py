@@ -146,8 +146,8 @@ def init_parser():
                         help="Process each line of JSON file separately")
     parser.add_argument('-o', '--output-csv', type=str, default=None,
                         help="Path to csv file to output")
-    parser.add_argument('-d', '--delimiter', type=str, default=",",
-                        help="1 character CSV delimiter. Default is comma ','")
+    parser.add_argument('--delimiter', '-d', '--csv-delimiter', type=str, default=",",
+                        help="1 character CSV delimiter. Default is comma ','. You may also output in tsv with '\\t'")
     parser.add_argument(
         '--strings', help="Convert lists, sets, and dictionaries fully to comma-separated strings.", action="store_true", default=True)
     parser.add_argument('--no-header', action="store_true",
