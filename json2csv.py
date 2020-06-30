@@ -19,8 +19,13 @@ except ModuleNotFoundError:
     print('jsmin is not installed. Hence comments in outline file are disabled. Run "pip install jsmin" to install it')
     jsmin = lambda x: x
 
+try:
+    import pyjq as jqp  # jq-processor
+except ModuleNotFoundError:
+    jqp = None
 
-__version__ = "0.2.0.2"
+
+__version__ = "0.2.1.0"
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -51,29 +56,59 @@ class Json2Csv(object):
         elif 'map' not in outline or len(outline['map']) < 1:
             raise ValueError('You must specify at least one value for "map"')
 
+        self.preprocessing = outline.get('pre-processing', None)
+        self.preprocessing = self._optimized_jq_selector(self.preprocessing)
+        self.postprocessing = outline.get('post-processing', None)
+        self.postprocessing = self._optimized_jq_selector(self.postprocessing)
+        
         key_map = OrderedDict()
-        for header, key in outline['map']:
-            splits = key.split('.')
+        key_processing_map = OrderedDict()
+        for header, key, *others in outline['map']:
+            assert key or (others is not None and len(others) > 0), "Should either use keypaths or use JQ processing to get a value"
+            splits = key.split('.') if key else []
             splits = [int(s) if s.isdigit() else s for s in splits]
             key_map[header] = splits
+            ## expecting outline["map"]: [ ..., ["key", "keypath.to.value", {"jq": ".", "args": {"a": "abc", "b": 456}}], ... ]
+            custom_processing = others[0] if len(others) > 0 else None
+            key_processing_map[header] = custom_processing
 
         self.key_map = key_map
+        self.key_processing_map = key_processing_map
         if 'collection' in outline:
             self.collection = outline['collection']
         elif 'dropRootKeys' in outline:
             self.root_array = True
+    
+    def _optimized_jq_selector(self, selector):
+        """nullifies if the command is the identity. Against performance issue.
+        """
+        cmd = (selector if selector else ".").strip()
+        cmd = cmd if cmd != "." else None
+        return cmd
 
     def load(self, json_file):
-        self.process_each(json.load(json_file))
-
-    def process_each(self, data):
-        """Process each item of a json-loaded dict
-        """
+        data = json.load(json_file)
+        data = self._target_data(data)
+        # performance: avoid calling jq if identity
+        data = jqp.one(self.preprocessing, data) if jqp and self.preprocessing else data
+        
+        self.process_each(data)
+        
+        # performance: avoid calling jq if identity
+        self.rows = jqp.one(self.postprocessing, self.rows) if jqp and self.postprocessing else self.rows
+    
+    def _target_data(self, data):
         if self.collection and self.collection in data:
             data = data[self.collection]
         elif self.root_array:
             data = list(data.values()) if isinstance(data, dict) else data
+        return data
 
+    def process_each(self, data):
+        """Process each item of a json-loaded dict
+        """
+        # data = self._target_data(data)  # already done in self.load(..)
+        
         for d in data:
             logging.info(d)
             self.rows.append(self.process_row(d))
@@ -83,11 +118,22 @@ class Json2Csv(object):
         """
         row = {}
 
-        for header, keys in list(self.key_map.items()):
+        for header, keys in self.key_map.items():
             try:
                 row[header] = reduce(operator.getitem, keys, item)
             except (KeyError, IndexError, TypeError):
                 row[header] = None
+
+        ### Design choice: jq scripts override since they are customized
+        for header, data in self.key_processing_map.items():
+            if jqp and data is not None:  # row[header] is None:
+                try:
+                    selector, args = data.get('jq'), data.get('args', {})
+                    selector = self._optimized_jq_selector(selector)
+                    if selector:
+                        row[header] = jqp.one(selector, item, vars=args)
+                except (KeyError, IndexError, TypeError, ValueError):
+                    pass
 
         return row
 
@@ -123,6 +169,12 @@ class Json2Csv(object):
 
 
 class MultiLineJson2Csv(Json2Csv):
+    """
+    Note: No pre-processing or post-processing
+    Conceptually, multiline JSON cannot use the notion of preprocessing a whole
+    input file since each line is treated one after the other in sequence,
+    without ever seeing the full file.
+    """
     def load(self, json_file):
         self.process_each(json_file)
 

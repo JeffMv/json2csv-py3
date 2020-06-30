@@ -137,4 +137,6 @@ The class variables `SEP_CHAR`, `KEY_VAL_CHAR`, `DICT_SEP_CHAR`, `DICT_OPEN`, an
 
 ## Upcoming features
 
-- [ ] Ability to use JQ filters to further control the CSV output
+- [X] Ability to use JQ filters to further control the CSV output
+  - [X] Example JQ filters using gen_outline.py
+  - [ ] Document usage of JQ filters

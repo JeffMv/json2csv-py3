@@ -5,6 +5,7 @@ import uuid
 # What packages are optional?
 EXTRAS = {
     'comments': ['jsmin'],
+    'jq': ['pyjq'],
 }
 
 setup(

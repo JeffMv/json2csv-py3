@@ -1,1 +1,7 @@
 unicodecsv>=0.9.0
+
+## an extra to allow comments in the outline file
+#jsmin>=2.0.0
+
+## an extra for using jq
+#pyjq>=2.0.0
