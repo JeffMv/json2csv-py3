@@ -3,6 +3,10 @@
 import json
 import os, os.path
 
+from collections import OrderedDict
+from functools import reduce
+
+
 def key_paths(d):
     def helper(path, x):
         if isinstance(x, dict):
@@ -41,7 +45,7 @@ def gather_key_map(iterator):
 def path_join(path, sep='.'):
     return sep.join(str(k) for k in path)
 
-def key_map_to_list(key_map, dummy_jq=False, no_duplicate_accessors=False):
+def key_map_to_list(key_map, should_sort=False, dummy_jq=False, no_duplicate_accessors=False):
     # We convert to strings *after* sorting so that array indices come out
     # in the correct order.
     def make_jq_selector(k):
@@ -49,13 +53,30 @@ def key_map_to_list(key_map, dummy_jq=False, no_duplicate_accessors=False):
         sel = {"jq": ("." + path_join(components)), "args": {}}
         return sel
     
+    def group_by(collection, func):
+        groups = reduce((lambda acc,val: acc + [(func(val), [])]), collection, [])
+        from collections import OrderedDict
+        groups = OrderedDict(groups)
+        _ = [groups[func(value)].append(value) for value in collection]
+        return groups
+
+    def group_collection_elements_in_list(collection, func):
+        groups = group_by(collection, func)
+        return reduce((lambda acc, key: acc + groups[key]), groups.keys(), [])
+    
+    
+    base = list(sorted(key_map.keys()) if should_sort else key_map.keys())
+    if not should_sort:
+        base = group_collection_elements_in_list(base, lambda x: "_".join(x[0].split("_")[:2]))
+    
     if dummy_jq:
         make_keypath = (lambda k: path_join(k)) if not dummy_jq or not no_duplicate_accessors else lambda _: None
-        return [(path_join(k, '_'), make_keypath(k), make_jq_selector(k)) for k in sorted(key_map.keys())]
+        return [(path_join(k, '_'), make_keypath(k), make_jq_selector(k)) for k in base]
     else:
-        return [(path_join(k, '_'), path_join(k)) for k in sorted(key_map.keys())]
+        return [(path_join(k, '_'), path_join(k)) for k in base]
 
-def make_outline(json_file, each_line, collection_key, drop_root_keys=False, dummy_jq=False, no_duplicate_accessors=False):
+
+def make_outline(json_file, each_line, collection_key, sort_keys, drop_root_keys=False, dummy_jq=False, no_duplicate_accessors=False):
     if each_line:
         iterator = line_iter(json_file)
     elif collection_key:
@@ -64,7 +85,7 @@ def make_outline(json_file, each_line, collection_key, drop_root_keys=False, dum
         iterator = dropkey_iter(json_file)
 
     key_map = gather_key_map(iterator)
-    outline = {'map': key_map_to_list(key_map, dummy_jq, no_duplicate_accessors)}
+    outline = {'map': key_map_to_list(key_map, sort_keys, dummy_jq, no_duplicate_accessors)}
     if collection_key:
         outline['collection'] = collection_key
     if drop_root_keys:
@@ -80,7 +101,7 @@ def init_parser():
     parser.add_argument('json_file', type=argparse.FileType('r'),
                         help="Path to JSON data file to analyze")
     parser.add_argument('-o', '--output-file', type=str, default=None,
-                        help="Path to outline file to output")
+                        help="Path to outline file to output. Omitting this will create a file based on the input file's path.")
     
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-e', '--each-line', action="store_true",
@@ -88,8 +109,12 @@ def init_parser():
     group.add_argument('-c', '--collection', type=str, default=None,
                        help="Key in JSON of array to process", metavar="KEY")
     group.add_argument('-d', '--dropRootKeys', action="store_true",
-                       help="Process only values of a JSON file that has a dictionary as the root")
+                       help=("Process values of a JSON file that has a "
+                       "dictionary or an array as the root. It respectively "
+                       "drops the string keys or the index keys."))
     
+    parser.add_argument('--sort-keys', '-s', '--sort', action="store_true", dest="sortKeys",
+                       help="Sorts the 'map' output alphabetically")
     parser.add_argument('-p', '--jq-processing', '--processing', '--jq', action="store_true",
                        help="Include JQ processing fields for accessors. Remember that using JQ commands instead of accessors significantly decreases performance")
     parser.add_argument('--no-duplicate-accessors', '--no-duplicates', action="store_true",
@@ -99,7 +124,7 @@ def init_parser():
 def main():
     parser = init_parser()
     args = parser.parse_args()
-    outline = make_outline(args.json_file, args.each_line, args.collection, args.dropRootKeys, args.jq_processing, args.no_duplicate_accessors)
+    outline = make_outline(args.json_file, args.each_line, args.collection, args.sortKeys, args.dropRootKeys, args.jq_processing, args.no_duplicate_accessors)
     outfile = args.output_file
     if outfile is None:
         fileName, fileExtension = os.path.splitext(args.json_file.name)
