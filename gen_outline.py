@@ -41,7 +41,7 @@ def gather_key_map(iterator):
 def path_join(path, sep='.'):
     return sep.join(str(k) for k in path)
 
-def key_map_to_list(key_map, dummy_jq=False, show_duplicate_accessors=False):
+def key_map_to_list(key_map, dummy_jq=False, no_duplicate_accessors=False):
     # We convert to strings *after* sorting so that array indices come out
     # in the correct order.
     def make_jq_selector(k):
@@ -50,12 +50,12 @@ def key_map_to_list(key_map, dummy_jq=False, show_duplicate_accessors=False):
         return sel
     
     if dummy_jq:
-        make_keypath = (lambda k: path_join(k)) if show_duplicate_accessors or not dummy_jq else lambda _: None
+        make_keypath = (lambda k: path_join(k)) if not dummy_jq or not no_duplicate_accessors else lambda _: None
         return [(path_join(k, '_'), make_keypath(k), make_jq_selector(k)) for k in sorted(key_map.keys())]
     else:
         return [(path_join(k, '_'), path_join(k)) for k in sorted(key_map.keys())]
 
-def make_outline(json_file, each_line, collection_key, drop_root_keys=False, dummy_jq=False, show_duplicate_accessors=False):
+def make_outline(json_file, each_line, collection_key, drop_root_keys=False, dummy_jq=False, no_duplicate_accessors=False):
     if each_line:
         iterator = line_iter(json_file)
     elif collection_key:
@@ -64,7 +64,7 @@ def make_outline(json_file, each_line, collection_key, drop_root_keys=False, dum
         iterator = dropkey_iter(json_file)
 
     key_map = gather_key_map(iterator)
-    outline = {'map': key_map_to_list(key_map, dummy_jq, show_duplicate_accessors)}
+    outline = {'map': key_map_to_list(key_map, dummy_jq, no_duplicate_accessors)}
     if collection_key:
         outline['collection'] = collection_key
     if drop_root_keys:
@@ -92,14 +92,14 @@ def init_parser():
     
     parser.add_argument('-p', '--jq-processing', '--processing', '--jq', action="store_true",
                        help="Include JQ processing fields for accessors. Remember that using JQ commands instead of accessors significantly decreases performance")
-    parser.add_argument('--show-duplicate-accessors', '--show-duplicates', action="store_true",
+    parser.add_argument('--no-duplicate-accessors', '--no-duplicates', action="store_true",
                        help="When used with JQ processing fields, it will remove accessors that jq covers")
     return parser
 
 def main():
     parser = init_parser()
     args = parser.parse_args()
-    outline = make_outline(args.json_file, args.each_line, args.collection, args.dropRootKeys, args.jq_processing, args.show_duplicate_accessors)
+    outline = make_outline(args.json_file, args.each_line, args.collection, args.dropRootKeys, args.jq_processing, args.no_duplicate_accessors)
     outfile = args.output_file
     if outfile is None:
         fileName, fileExtension = os.path.splitext(args.json_file.name)
@@ -107,6 +107,15 @@ def main():
 
     with open(outfile, 'w') as f:
         json.dump(outline, f, indent=2, sort_keys=True)
+    if args.jq_processing:
+        print("NOTE: You chose to enable jq-processing. Remember you have to nullify default accessors "
+            "when you want JQ selectors to be applied. If you do not set "
+            "default accessors to null, the JQ selector will not be applied, "
+            "due to performance issue when repeatedly calling JQ.")
+        if args.no_duplicate_accessors:
+            print("...\nWARNING: are you sure you want to remove all default accessors ? "
+                "(It will dramatically reduce the processing speed of the conversion. "
+                "It should only be used for debug purpose or to learn how to create an outline file.)")
 
 if __name__ == '__main__':
     main()

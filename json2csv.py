@@ -25,7 +25,7 @@ except ModuleNotFoundError:
     jqp = None
 
 
-__version__ = "0.2.1.0"
+__version__ = "0.2.1.1"
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -124,9 +124,10 @@ class Json2Csv(object):
             except (KeyError, IndexError, TypeError):
                 row[header] = None
 
-        ### Design choice: jq scripts override since they are customized
+        ### Design choice: jq scripts DO NOT override default accessors
+        ### because accessing using JQ dramatically decreases performance
         for header, data in self.key_processing_map.items():
-            if jqp and data is not None:  # row[header] is None:
+            if jqp and row[header] is None and data is not None:  # row[header] is None:
                 try:
                     selector, args = data.get('jq'), data.get('args', {})
                     selector = self._optimized_jq_selector(selector)
