@@ -106,6 +106,36 @@ If you have installed the extra dependancies, you will be able to use comments:
 }
 ```
 
+### JQ Processing
+
+You can use JQ scripts to process the JSON while it is being converted, if you have all the requirements ([`jq`](https://stedolan.github.io/jq/manual) and `pyjq`).
+
+There are 3 main places you can place your scripts:
+
+- `"pre-processing"`: a jq script that will be given the array containing the input data as its input. It is executed before anything else in the outline. Executed only once.
+
+- `"post-processing"`: a jq script that will be given the output rows of the outline as its input. It is executed after everything else in the outline. Executed only once.
+
+- `"map-processing"`: **executed for each row**, being passed as `input` the current item and passed as jq arguments (`jq --arg varname value`) the fields generated up until now by the outline for this row.
+  **[PERFORMANCE HIT]** Since a jq process is launched and executed for each row, it can make a huge difference in completion time.
+  **Note**: Only use it if it is really impossible to achieve what you need with either pre-/post-processing.
+  Remember that **most of the time**, you can use the combination of `pre-processing` to lay some variables with a `map` and then use `post-processing` to use these variables while ensuring you delete them with jq's `del(.foo)` so that they don't show up in the CSV file.
+  The outline file would look like:
+
+  ```json
+  {
+    "...": "...",
+    "pre-processing": "map(. + {tempKey: value})",
+    "post-processing": "map(. + { finalKey: (.tempKey | dosomething) } | del(.tempKey))",
+    "map": [...]
+  }
+  ```
+
+
+
+Note: You can pass `null` or `"."` as a JQ script to avoid launching a JQ process.
+
+
 
 ## Generating outline files
 

@@ -25,7 +25,7 @@ except ModuleNotFoundError:
     jqp = None
 
 
-__version__ = "0.2.1.2"
+__version__ = "0.2.1.3"
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -58,6 +58,8 @@ class Json2Csv(object):
 
         self.preprocessing = outline.get('pre-processing', None)
         self.preprocessing = self._optimized_jq_selector(self.preprocessing)
+        self.mapprocessing = outline.get('map-processing', None)
+        self.mapprocessing = self._optimized_jq_selector(self.mapprocessing)
         self.postprocessing = outline.get('post-processing', None)
         self.postprocessing = self._optimized_jq_selector(self.postprocessing)
         
@@ -88,7 +90,9 @@ class Json2Csv(object):
 
     def load(self, json_file):
         data = json.load(json_file)
+        
         data = self._target_data(data)
+        
         # performance: avoid calling jq if identity
         data = jqp.one(self.preprocessing, data) if jqp and self.preprocessing else data
         
@@ -127,16 +131,46 @@ class Json2Csv(object):
             except (KeyError, IndexError, TypeError):
                 row[header] = None
 
+        
+        ######   Map-processing   row-wise   ######
+        ### Preferred way to process using JQ (much much more efficient
+        ### than field-wise selectors).
+        
+        # to make custom generated fields available in JQ as $myvar
+        jq_params = row.copy()
+        if self.mapprocessing:
+            try:
+                computed = jqp.one(self.mapprocessing, item, args=jq_params)
+                row.update(computed)
+            except Exception as err:
+                logging.warning(" JQ Error with map-processing JQ script '{}'. Error text: {}".format(self.mapprocessing, err))
+        
+        
+        ######   Individual field-wise JQ selectors   ######
+        ### Note: The user should rely mostly on row-wise map-processing
+        ###       instead of this field-wise calls. This is left here for
+        ###       historical reason since the code was still working.
+        ###
         ### Design choice: jq scripts DO NOT override default accessors
-        ### because accessing using JQ dramatically decreases performance
+        ### because accessing using JQ *dramatically* decreases performance
+        ### for every call. It also means it is far better to group every JQ
+        ### calls unless there is no other choice
+        
         for header, data in self.key_processing_map.items():
             if jqp and row[header] is None and data is not None:  # row[header] is None:
                 try:
-                    selector, args = data.get('jq'), data.get('args', {})
+                    selector = data.get('jq')
+                    args = data.get('args', {})
+                    ## NOTE: this causes more variables to be available than
+                    ## should be. However it's fine we let user be smart about
+                    ## their selector scripts. Internals should not be abused.
+                    ## Avoid performance hits
+                    jq_params.update(args)
+                    
                     selector = self._optimized_jq_selector(selector)
                     if selector:
                         try:
-                            tmp = jqp.one(selector, item, vars=args)
+                            tmp = jqp.one(selector, item, vars=jq_params)
                         except Exception as err:
                             logging.warning("Error on key '{}' with JQ '{}'. Error text: {}".format(header, selector, err))
                             tmp = None
