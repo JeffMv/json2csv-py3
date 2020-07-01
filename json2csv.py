@@ -25,7 +25,7 @@ except ModuleNotFoundError:
     jqp = None
 
 
-__version__ = "0.2.1.1"
+__version__ = "0.2.1.2"
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -120,7 +120,10 @@ class Json2Csv(object):
 
         for header, keys in self.key_map.items():
             try:
-                row[header] = reduce(operator.getitem, keys, item)
+                if keys:
+                    row[header] = reduce(operator.getitem, keys, item)
+                else:
+                    row[header] = None
             except (KeyError, IndexError, TypeError):
                 row[header] = None
 
@@ -132,7 +135,13 @@ class Json2Csv(object):
                     selector, args = data.get('jq'), data.get('args', {})
                     selector = self._optimized_jq_selector(selector)
                     if selector:
-                        row[header] = jqp.one(selector, item, vars=args)
+                        try:
+                            tmp = jqp.one(selector, item, vars=args)
+                        except Exception as err:
+                            logging.warning("Error on key '{}' with JQ '{}'. Error text: {}".format(header, selector, err))
+                            tmp = None
+                        
+                        row[header] = tmp
                 except (KeyError, IndexError, TypeError, ValueError):
                     pass
 
