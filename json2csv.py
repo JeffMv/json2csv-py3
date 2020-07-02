@@ -25,7 +25,7 @@ except ModuleNotFoundError:
     jqp = None
 
 
-__version__ = "0.2.1.5"
+__version__ = "0.2.1.6"
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -87,6 +87,11 @@ class Json2Csv(object):
     def _optimized_jq_selector(self, selector):
         """nullifies if the command is the identity. Against performance issue.
         """
+        ### allow multiline JQ commands (for readability) through the use of
+        ### arrays
+        if isinstance(selector, list):
+            selector = "".join(selector)
+        
         cmd = (selector if selector else ".").strip()
         cmd = cmd if cmd != "." else None
         return cmd
