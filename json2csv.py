@@ -25,7 +25,7 @@ except ModuleNotFoundError:
     jqp = None
 
 
-__version__ = "0.2.1.3"
+__version__ = "0.2.1.4"
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -113,11 +113,11 @@ class Json2Csv(object):
         """
         # data = self._target_data(data)  # already done in self.load(..)
         
-        for d in data:
+        for i, d in enumerate(data):
             logging.info(d)
-            self.rows.append(self.process_row(d))
+            self.rows.append(self.process_row(d, i))
 
-    def process_row(self, item):
+    def process_row(self, item, index):
         """Process a row of json data against the key map
         """
         row = {}
@@ -138,9 +138,10 @@ class Json2Csv(object):
         
         # to make custom generated fields available in JQ as $myvar
         jq_params = row.copy()
+        jq_params.update({'__row__': index})
         if self.mapprocessing:
             try:
-                computed = jqp.one(self.mapprocessing, item, args=jq_params)
+                computed = jqp.one(self.mapprocessing, item, vars=jq_params)
                 row.update(computed)
             except Exception as err:
                 logging.warning(" JQ Error with map-processing JQ script '{}'. Error text: {}".format(self.mapprocessing, err))
@@ -224,11 +225,11 @@ class MultiLineJson2Csv(Json2Csv):
 
     def process_each(self, data, collection=None):
         """Load each line of an iterable collection (ie. file)"""
-        for line in data:
+        for i, line in enumerate(data):
             d = json.loads(line)
             if self.collection in d:
                 d = d[self.collection]
-            self.rows.append(self.process_row(d))
+            self.rows.append(self.process_row(d, i))
 
 
 def init_parser():
