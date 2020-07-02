@@ -25,7 +25,7 @@ except ModuleNotFoundError:
     jqp = None
 
 
-__version__ = "0.2.1.4"
+__version__ = "0.2.1.5"
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -62,6 +62,8 @@ class Json2Csv(object):
         self.mapprocessing = self._optimized_jq_selector(self.mapprocessing)
         self.postprocessing = outline.get('post-processing', None)
         self.postprocessing = self._optimized_jq_selector(self.postprocessing)
+        self.context_constants = outline.get('context-constants', {})
+        self.special_values_mapping = outline.get('special-values-mapping', {})
         
         key_map = OrderedDict()
         key_processing_map = OrderedDict()
@@ -75,6 +77,7 @@ class Json2Csv(object):
             key_processing_map[header] = custom_processing
 
         self.key_map = key_map
+        self.header_keys = OrderedDict(self.key_map)
         self.key_processing_map = key_processing_map
         if 'collection' in outline:
             self.collection = outline['collection']
@@ -94,12 +97,51 @@ class Json2Csv(object):
         data = self._target_data(data)
         
         # performance: avoid calling jq if identity
-        data = jqp.one(self.preprocessing, data) if jqp and self.preprocessing else data
+        data = jqp.one(self.preprocessing, data, vars=self.context_constants) if jqp and self.preprocessing else data
         
         self.process_each(data)
         
         # performance: avoid calling jq if identity
-        self.rows = jqp.one(self.postprocessing, self.rows) if jqp and self.postprocessing else self.rows
+        if jqp and self.postprocessing:
+            self.rows = jqp.one(self.postprocessing, self.rows, vars=self.context_constants)
+        
+        self._update_header_keys(self.rows)
+        # special values
+        vnone = self.special_values_mapping.get("null", "")
+        vempty = self.special_values_mapping.get("empty", "")
+        self.rows = self._replace_nulls(self.rows, vnone, vempty)
+    
+    
+    def _update_header_keys(self, data_rows):
+        ## making sure all the keys that were generated dynamically are
+        ## actually added to the CSV
+        ## Ensure the keys that were removed by a dynamic processing step like
+        ## JQ are also removed. This can allow the user to have temporary
+        ## helper fields and clean them in post-processing
+        every_keys = OrderedDict()
+        on_single_row = lambda acc, row_dict: every_keys.update({key:None for key in row_dict.keys()}) or every_keys
+        _ = reduce(on_single_row, data_rows, every_keys)
+        
+        initial_keys = set(self.header_keys.keys())
+        found_keys = set(every_keys.keys())  # keys found in rows. we will see those
+        
+        # keys_to_add = set(found_keys) - set(initial_keys)
+        keys_to_remove = set(initial_keys) - set(found_keys)
+        # difference_symmetrique = keys_to_add.union(keys_to_remove)
+        
+        # only adds new keys at the end without messing the existing order
+        self.header_keys.update(every_keys)
+        
+        _ = [self.header_keys.pop(key) for key in keys_to_remove]
+        pass
+    
+    def _replace_nulls(self, data, value_for_none=None, value_for_empty=None):
+        value_for_none = value_for_none if value_for_none is not None else ""
+        value_for_empty = value_for_empty if value_for_empty is not None else ""
+        
+        replace = lambda x: x if (x is not None and x != "") else (value_for_none if x is None else value_for_empty)
+        transformed = list(map(lambda row: {key: replace(value) for key, value in row.items()}, data))
+        return transformed
     
     def _target_data(self, data):
         if self.collection and self.collection in data:
@@ -138,11 +180,13 @@ class Json2Csv(object):
         
         # to make custom generated fields available in JQ as $myvar
         jq_params = row.copy()
+        jq_params.update(self.context_constants)
         jq_params.update({'__row__': index})
         if self.mapprocessing:
             try:
                 computed = jqp.one(self.mapprocessing, item, vars=jq_params)
                 row.update(computed)
+                self.header_keys.update({key: None for key in computed.keys()})
             except Exception as err:
                 logging.warning(" JQ Error with map-processing JQ script '{}'. Error text: {}".format(self.mapprocessing, err))
         
@@ -207,7 +251,8 @@ class Json2Csv(object):
         else:
             out = self.rows
         with open(filename, 'wb+') as f:
-            writer = csv.DictWriter(f, list(self.key_map.keys()), delimiter=delimiter)
+            header_columns = list(self.header_keys.keys())
+            writer = csv.DictWriter(f, header_columns, delimiter=delimiter)
             if write_header:
                 writer.writeheader()
             writer.writerows(out)
