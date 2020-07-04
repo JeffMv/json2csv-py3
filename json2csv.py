@@ -9,6 +9,7 @@ import json
 import operator
 import os
 import logging
+import datetime
 
 from collections import OrderedDict
 from functools import reduce
@@ -25,7 +26,7 @@ except ModuleNotFoundError:
     jqp = None
 
 
-__version__ = "0.2.1.6"
+__version__ = "0.2.2.0"
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -282,13 +283,29 @@ class MultiLineJson2Csv(Json2Csv):
             self.rows.append(self.process_row(d, i))
 
 
+def get_filepath_formatted_from_filepath(template, filepath):
+    folder = os.path.dirname(filepath)
+    basename = os.path.basename(filepath)
+    base, ext = os.path.splitext(basename)
+    ext = ext[1:]
+    fp = filepath
+    output = template.format(basename=basename, path=filepath,
+                             base=base, ext=ext,
+                             directory=folder, folder=folder, dirname=folder)
+    return output
+
+
 def init_parser():
     import argparse
     parser = argparse.ArgumentParser(description="Converts JSON to CSV")
-    parser.add_argument('json_file', type=argparse.FileType('r'),
-                        help="Path to JSON data file to load")
-    parser.add_argument('key_map', type=argparse.FileType('r'),
+    
+    mandatory_group = parser.add_argument_group("Mandatory arguments")
+    mandatory_group.add_argument('input_json_files', nargs="+", default=[],
+                        help="Path to other JSON data file to load")
+    mandatory_group.add_argument('-k', '--key-map', type=argparse.FileType('r'),
+                        dest="key_map", required=True,
                         help="File containing JSON key-mapping file to load")
+    
     parser.add_argument('-e', '--each-line', action="store_true", default=False,
                         help="Process each line of JSON file separately")
     parser.add_argument('-o', '--output-csv', type=str, default=None,
@@ -303,29 +320,56 @@ def init_parser():
     
     return parser
 
+
+def convert_json_to_csv(json_file, key_map, output_csv, no_header, make_strings, each_line, delimiter):
+    """
+    :param dict key_map:
+    """
+    special_inputs_map = {"\\t":"\t", "\\n":"\n"}
+    csv_delimiter = special_inputs_map.get(delimiter, delimiter)
+    
+    try:
+        loader = None
+        if each_line:
+            loader = MultiLineJson2Csv(key_map)
+        else:
+            loader = Json2Csv(key_map)
+
+        loader.load(json_file)
+
+        outfile = output_csv
+        if outfile is None:
+            fileName, fileExtension = os.path.splitext(json_file.name)
+            outfile = fileName + '.csv'
+        
+        os.makedirs(os.path.dirname(outfile), exist_ok=True)
+
+        loader.write_csv(filename=outfile, make_strings=make_strings, write_header=not no_header, delimiter=csv_delimiter)
+    except Exception as err:
+        print("Error while processing file {}: [{}] {}".format(json_file.name, type(err), err))
+        raise err
+    pass
+
+
 if __name__ == '__main__':
     parser = init_parser()
     args = parser.parse_args()
     
     # levels_of_log = {0:logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
-    # print(f"verbose: {args.verbose}, level: ...")
+    # print("verbose: {}, level: ...".format(args.verbose))
     # logging.basicConfig(level=levels_of_log[args.verbose])  # not working if alreary made earlier
+        
+    key_map_content = json.loads(jsmin(args.key_map.read()))
     
-    special_inputs_map = {"\\t":"\t", "\\n":"\n"}
-    csv_delimiter = special_inputs_map.get(args.delimiter, args.delimiter)
+    output_paths = [get_filepath_formatted_from_filepath(args.output_csv, fp) for fp in args.input_json_files]
+    assert len(set(output_paths)) == len(set(args.input_json_files)), "Mismatched number of input-output filepaths. Number of generated output paths must match number of input files to convert"
     
-    key_map = json.loads(jsmin(args.key_map.read()))
-    loader = None
-    if args.each_line:
-        loader = MultiLineJson2Csv(key_map)
-    else:
-        loader = Json2Csv(key_map)
-
-    loader.load(args.json_file)
-
-    outfile = args.output_csv
-    if outfile is None:
-        fileName, fileExtension = os.path.splitext(args.json_file.name)
-        outfile = fileName + '.csv'
-
-    loader.write_csv(filename=outfile, make_strings=args.strings, write_header=not args.no_header, delimiter=csv_delimiter)
+    for i, filepath in enumerate(args.input_json_files):
+        output_filepath = output_paths[i]
+        
+        with open(filepath, "r") as fileobject:
+            dt = datetime.datetime.today()
+            s_time = "{:02}:{:02}:{:02}".format(dt.hour, dt.minute, dt.second)
+            print("  {} / {} : {}  {}|  {}".format(i+1, len(args.input_json_files), fileobject.name, (("-> %s  "%output_filepath) if output_filepath else ""), s_time))
+            convert_json_to_csv(fileobject, key_map_content, output_filepath, args.no_header, args.strings, args.each_line, args.delimiter)
+    

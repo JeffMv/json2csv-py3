@@ -111,7 +111,8 @@ def init_parser():
         help="Process each line of JSON file separately")
     group.add_argument('-c', '--collection', type=str, default=None,
         help="Key in JSON of array to process", metavar="KEY")
-    group.add_argument('-d', '--dropRootKeys', action="store_true",
+    group.add_argument('-d', '--drop-root-keys', action="store_true",
+        dest="dropRootKeys",
         help=("Process values of a JSON file that has a "
             "dictionary or an array as the root. It respectively "
             "drops the string keys or the index keys."))
