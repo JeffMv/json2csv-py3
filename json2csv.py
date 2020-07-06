@@ -26,7 +26,7 @@ except ModuleNotFoundError:
     jqp = None
 
 
-__version__ = "0.2.2.0"
+__version__ = "0.2.2.1"
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -247,10 +247,10 @@ class Json2Csv(object):
         else:
             return str(item)
 
-    def write_csv(self, filename='output.csv', make_strings=False, write_header=True, delimiter=","):
+    def write_csv(self, filename='output.csv', make_strings=False, write_header=True, delimiter=",", allow_empty=False):
         """Write the processed rows to the given filename
         """
-        if (len(self.rows) <= 0):
+        if (len(self.rows) <= 0) and not allow_empty:
             raise AttributeError('No rows were loaded')
         if make_strings:
             out = self.make_strings()
@@ -312,16 +312,21 @@ def init_parser():
                         help="Path to csv file to output")
     parser.add_argument('--delimiter', '-d', '--csv-delimiter', type=str, default=",",
                         help="1 character CSV delimiter. Default is comma ','. You may also output in tsv with '\\t'")
-    parser.add_argument(
-        '--strings', help="Convert lists, sets, and dictionaries fully to comma-separated strings.", action="store_true", default=True)
+    parser.add_argument('--strings', action="store_true", default=True,
+        help="Convert lists, sets, and dictionaries fully to comma-separated strings.")
     parser.add_argument('--no-header', action="store_true",
                         help="Process each line of JSON file separately")
     parser.add_argument('--verbose', type=int, default=0, help="Level of logs")
     
+    
+    error_mgmt_group = parser.add_argument_group("Error management")
+    error_mgmt_group.add_argument('--allow-empty-file', action="store_true",
+        help="If a CSV file would be created without rows, then still create one. If not specified, raise an error in such case.")
+    
     return parser
 
 
-def convert_json_to_csv(json_file, key_map, output_csv, no_header, make_strings, each_line, delimiter):
+def convert_json_to_csv(json_file, key_map, output_csv, no_header, make_strings, each_line, delimiter, allow_empty_output):
     """
     :param dict key_map:
     """
@@ -344,7 +349,7 @@ def convert_json_to_csv(json_file, key_map, output_csv, no_header, make_strings,
         
         os.makedirs(os.path.dirname(outfile), exist_ok=True)
 
-        loader.write_csv(filename=outfile, make_strings=make_strings, write_header=not no_header, delimiter=csv_delimiter)
+        loader.write_csv(filename=outfile, make_strings=make_strings, write_header=not no_header, delimiter=csv_delimiter, allow_empty=allow_empty_output)
     except Exception as err:
         print("Error while processing file {}: [{}] {}".format(json_file.name, type(err), err))
         raise err
@@ -361,8 +366,11 @@ if __name__ == '__main__':
         
     key_map_content = json.loads(jsmin(args.key_map.read()))
     
-    output_paths = [get_filepath_formatted_from_filepath(args.output_csv, fp) for fp in args.input_json_files]
-    assert len(set(output_paths)) == len(set(args.input_json_files)), "Mismatched number of input-output filepaths. Number of generated output paths must match number of input files to convert"
+    if args.output_csv is None:
+        output_paths = [None for _ in args.input_json_files]
+    else:
+        output_paths = [get_filepath_formatted_from_filepath(args.output_csv, fp) for fp in args.input_json_files]
+    assert args.output_csv is None or len(set(output_paths)) == len(set(args.input_json_files)), "Mismatched number of input-output filepaths. Number of generated output paths ({}) must match number of input files to convert ({})".format(len(output_paths), len(args.input_json_files))
     
     for i, filepath in enumerate(args.input_json_files):
         output_filepath = output_paths[i]
@@ -371,5 +379,5 @@ if __name__ == '__main__':
             dt = datetime.datetime.today()
             s_time = "{:02}:{:02}:{:02}".format(dt.hour, dt.minute, dt.second)
             print("  {} / {} : {}  {}|  {}".format(i+1, len(args.input_json_files), fileobject.name, (("-> %s  "%output_filepath) if output_filepath else ""), s_time))
-            convert_json_to_csv(fileobject, key_map_content, output_filepath, args.no_header, args.strings, args.each_line, args.delimiter)
+            convert_json_to_csv(fileobject, key_map_content, output_filepath, args.no_header, args.strings, args.each_line, args.delimiter, args.allow_empty_file)
     

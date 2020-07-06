@@ -26,31 +26,37 @@ pip install pyjq  # allows using JQ processing. You also need JQ on your system
 
 
 Basic (convert from a JSON file to a CSV file in same path):
+
 ```bash
-python json2csv.py /path/to/json_file.json /path/to/outline_file.json
+python json2csv.py /path/to/json_file.json -k /path/to/outline_file.json
+# simply add other input filepaths to convert multiple files at a time
 ```
 
 Specify CSV file
-```bash
-python json2csv.py /path/to/json_file.json /path/to/outline_file.json -o /some/other/file.csv
-```
-
-Output a CSV file without header
-```bash
-python json2csv.py /path/to/json_file.json /path/to/outline_file.json -o /some/other/file.csv --no-header
-```
-
-For custom CSV delimiter output:
 
 ```bash
-python json2csv.py /path/to/json_file.json /path/to/outline_file.json --csv-delimiter ';'
-# you can also output in *.tsv with '\t' as the delimiter
+python json2csv.py /path/to/json_file.json -k /path/to/outline_file.json -o /some/other/file.csv
 ```
+
+Output without header
+
+```bash
+python json2csv.py /path/to/json_file.json -k /path/to/outline_file.json --no-header
+```
+
+
 
 For MongoDB (multiple JSON objects per file, which is non-standard JSON):
 
 ```bash
-python json2csv.py --each-line /path/to/json_file.json /path/to/outline_file.json
+python json2csv.py --each-line /path/to/json_file.json -k /path/to/outline_file.json
+```
+
+Using a different CSV delimiter for the output.
+
+```bash
+python json2csv.py /path/to/json_file.json -k /path/to/outline_file.json --csv-delimiter ';'
+# you can also output in *.tsv with '\t' as the delimiter
 ```
 
 ## Outline Format
@@ -124,9 +130,9 @@ There are 3 main places you can place your scripts:
   
   **[PERFORMANCE HIT]** Since a jq process is launched and executed for each row, it can make a huge difference in completion time, especially with >= 1000 elements.
   **Note**: Only use it if it is really impossible to achieve what you need with either pre-/post-processing.
-  Remember that **most of the time**, you can use the combination of `pre-processing` to lay some variables with a `map` and then use `post-processing` to use these variables while ensuring you delete them with jq's `del(.foo)` so that they don't show up in the CSV file.
+Remember that **most of the time**, you can use the combination of `pre-processing` to lay some variables with a `map` and then use `post-processing` to use these variables while ensuring you delete them with jq's `del(.foo)` so that they don't show up in the CSV file.
   The outline file would look like:
-
+  
   ```json
   {
     "...": "...",
@@ -174,7 +180,9 @@ For instance, in the following example, `None` (`null`) values will be replaced 
 
 To automatically generate an outline file from a json file:
 
-    python gen_outline.py --collection nodes /path/to/the.json
+```bash
+python gen_outline.py --collection nodes /path/to/the.json
+```
 
 This will generate an outline file with the union of all keys in the json
 collection at `/path/to/the.outline.json`.  You can specify the output file
@@ -184,11 +192,14 @@ If your json file's root is a dictionary and you want to drop out the root keys 
 
 `--drop-root-keys` works just like the [JQ](https://stedolan.github.io/jq/) command `map(.)` on a dictionary.
 
+
 ## Unquoting strings
 
 To remove quotation marks from strings in nested data types:
 
-    python json2csv.py /path/to/json_file.json /path/to/outline_file.json --strings
+```bash
+python json2csv.py /path/to/json_file.json /path/to/outline_file.json --strings
+```
 
 This will modify field contents such that:
 
@@ -215,4 +226,4 @@ The class variables `SEP_CHAR`, `KEY_VAL_CHAR`, `DICT_SEP_CHAR`, `DICT_OPEN`, an
 
 - [X] Ability to use JQ filters to further control the CSV output
   - [X] Example JQ filters using gen_outline.py
-  - [ ] Document usage of JQ filters
+  - [x] Document usage of JQ filters
