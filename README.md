@@ -123,7 +123,10 @@ There are 3 main places you can place your scripts:
 - `"pre-processing"`: a jq script that will be given the array containing the input data as its input. It must output the exact dictionary or array as what would be expected. It is executed right after the `"collection"` attribute (or `"dropRootKeys`) has been applied. Hence, you are expected to get as input an array of dictionaries, and should output an array of dictionaries.  Executed before the `"map"` elements else in the outline. 
   Executed only once.
 
-- `"post-processing"`: a jq script that will be given the output rows of the `"map"` as its input. Must output an array of dictionary. It is executed after everything else in the outline. Executed only once.
+  Note: using pre-processing, you may want to *create new fields* that you want to also have in the output file. In that case, you would add entries with their path to the `map` array, in whichever position you intend to have the corresponding CSV column.
+
+- `"post-processing"`: a jq script that will be given the output rows of the `"map"` as its input. Must output an array of dictionaries. It is executed after everything else in the outline. Executed only once.
+  Note: any *key* you add/remove from the post-processing will be added/removed as a column in the CSV output. And any *row* you delete will not be written to the CSV. This allows you to have some row filtering conditions in place. Conversely, you may add rows in there (though this use case does not make sense generally).
 
 - `"map-processing"`: **executed for each row**, being passed as `input` the current item and passed as jq arguments (`jq --arg varname value`) the fields generated up until now by the outline for this row.
   It is **only** responsible for outputting the key-value pairs you want **to add / update**. This means you do not have to worry about kipping the root element around or any other key-value pairs. You can even output only `{row: $__row__}` and this will add the row's number as a column in the output CSV.
@@ -159,6 +162,17 @@ You can provide a general context for constants by setting the following key in 
   ...
 }
 ```
+
+For instance, you could use this context to pass in some useful constants that your data file is unaware of, for instance a country map to convert country names to country ISO codes.
+
+```json
+{
+  ...,
+  "context-constants": {"contextualVar1": "value"},
+  ...
+}
+```
+
 
 
 #### Handling `null`, `None` and empty strings
