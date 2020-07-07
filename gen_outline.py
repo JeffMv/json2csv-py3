@@ -88,8 +88,11 @@ def make_outline(json_file, each_line, collection_key, sort_keys, drop_root_keys
     outline = {}
     if collection_key:
         outline['collection'] = collection_key
-    if drop_root_keys:
+    elif drop_root_keys:
         outline['dropRootKeys'] = True
+   
+    outline["special-values-mapping"] = {"null": "null", "empty": ""}
+    
     if dummy_jq or fieldwise_jq:  # encourage using more optimal processing
         outline["context-constants"] = {}
         outline["pre-processing"] = "."

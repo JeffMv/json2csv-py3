@@ -163,12 +163,25 @@ You can provide a general context for constants by setting the following key in 
 }
 ```
 
-For instance, you could use this context to pass in some useful constants that your data file is unaware of, for instance a country map to convert country names to country ISO codes.
+For instance, you could use this context to pass in some useful constants that your data file is unaware of, for instance a country map to convert country names to country ISO codes and add that country ISO code as a column to in your CSV file. (This example also makes use of the `ascii_downcase` JQ filter that converts *ascii* characters to lowercase).
 
 ```json
 {
   ...,
-  "context-constants": {"contextualVar1": "value"},
+  "context-constants": {"countryCodes":{"united states":"us","france":"fr", "...":"..."}},
+  "pre-processing": "map( . + {contryCode: .[$countryCodes[.countryName | ascii_downcase]]} )",
+  "map": [
+    ...
+    [
+      "country",
+      "countryName"
+    ],
+    [
+      "countryIso",
+      "countryCode"
+    ]
+    ...
+  ],
   ...
 }
 ```
@@ -179,7 +192,7 @@ For instance, you could use this context to pass in some useful constants that y
 
 You can provide a mapping for special values. Those will be applied *after* the *post-processing* step.
 
-For instance, in the following example, `None` (`null`) values will be replaced by the empty string, while empty strings will be replaced with `"-"`. The replacement of values is considered simultaneous, which is why `null` values won't be replaced with `"-"`.
+For instance, in the following example, `null` JSON values (and `None` values generated during the processing) will be replaced by the empty string, while empty strings will be replaced with `"-"`. The replacement of values is considered *simultaneous*, which is why `null` values won't be replaced with `"-"`.
 
 ```json
 {
