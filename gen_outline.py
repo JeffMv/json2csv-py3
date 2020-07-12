@@ -104,13 +104,14 @@ def make_outline(json_file, each_line, collection_key, sort_keys, drop_root_keys
 def init_parser():
     import argparse
     parser = argparse.ArgumentParser(description="Generate an outline file for json2csv.py")
-    parser.add_argument('json_file', type=argparse.FileType('r'),
+    
+    parser.add_argument('filepaths', nargs="+",
         help="Path to JSON data file to analyze")
     parser.add_argument('-o', '--output-file', type=str, default=None,
         help="Path to outline file to output. Omitting this will create a file based on the input file's path.")
     
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('-e', '--each-line', action="store_true",
+    group.add_argument('-e', '--each-line', action="store_true", dest="each_line",
         help="Process each line of JSON file separately")
     group.add_argument('-c', '--collection', type=str, default=None,
         help="Key in JSON of array to process", metavar="KEY")
@@ -122,7 +123,8 @@ def init_parser():
     
     parser.add_argument('--sort-keys', '-s', '--sort', action="store_true", dest="sortKeys",
         help="Sorts the 'map' output alphabetically")
-    parser.add_argument('-p', '--jq-processing', '--processing', '--jq', action="store_true",
+    parser.add_argument('-p', '--jq-processing', '--processing', '--jq',
+        action="store_true", dest="jq_processing",
         help=("Include JQ processing fields. You have the choice between main "
             "entrypoints 'pre-processing', 'map-processing' and "
             "'post-processing'. "
@@ -144,17 +146,25 @@ def init_parser():
         help="When used with JQ processing fields, it will remove accessors that jq covers")
     return parser
 
+
 def main():
     parser = init_parser()
     args = parser.parse_args()
-    outline = make_outline(args.json_file, args.each_line, args.collection, args.sortKeys, args.dropRootKeys, args.jq_processing, args.fieldwise_jq_processing, args.no_duplicate_accessors)
-    outfile = args.output_file
-    if outfile is None:
-        fileName, fileExtension = os.path.splitext(args.json_file.name)
-        outfile = fileName + '.outline.json'
+    
+    assert args.output_file is None or (len(args.filepaths)==1 and args.output_file is not None), "Multiple inputs but 1 output path. Discard the output argument"
+    
+    for path in args.filepaths:
+        with open(path, "r") as filehandle:
+            outline = make_outline(filehandle, args.each_line, args.collection, args.sortKeys, args.dropRootKeys, args.jq_processing, args.fieldwise_jq_processing, args.no_duplicate_accessors)
+            outfile = args.output_file
+            if outfile is None:
+                fileName, fileExtension = os.path.splitext(filehandle.name)
+                outfile = fileName + '.outline.json'
 
-    with open(outfile, 'w') as f:
-        json.dump(outline, f, indent=2, sort_keys=False)
+        with open(outfile, 'w') as f:
+            json.dump(outline, f, indent=2, sort_keys=False)
+    
+    
     if args.fieldwise_jq_processing:
         print("NOTE: You chose to enable *field-wise* jq-processing. Remember you have to nullify default accessors "
             "when you want JQ selectors to be applied. If you do not set "
@@ -164,6 +174,7 @@ def main():
             print("...\nWARNING: are you sure you want to remove all default accessors ? "
                 "(It will dramatically reduce the processing speed of the conversion. "
                 "It should only be used for debug purpose or to learn how to create an outline file.)")
+
 
 if __name__ == '__main__':
     main()
