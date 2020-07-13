@@ -192,12 +192,14 @@ For instance, you could use this context to pass in some useful constants that y
 
 #### Handling special values like `null`, `None`, `true`, `false` and empty strings
 
-Some values do not have a unique representation accross languages and file types. Or you may want to provide your own mappings to make them compatible with other tools/workflow you have. For instance, Python has `True` while Javascript/JSON use `true` (lowercase), so representing the type correctly may help you with automatic type recognition when reading the CSV.
+Some values do not have a unique representation accross languages and file types. You may want to provide your own mappings to make the CSV compatible with other tools/workflow you have.
 
-You can provide a mapping for special values. Those will be applied *after* the *post-processing* step.
+Because mappings are made between JSON and Python, types are converted. Therefore, values such as `null`, `true` and `false` are by default converted to Python types, which then will be printed using `str(value)`. Therefore, in order to avoid having `None`, `True`/`False` (capitalized), a mapping has to be made. That's the purpose of the `"special-values-mapping": {...}` entry.
 
-For instance, in the following example, `null` JSON values (and `None` values generated during the processing) will be replaced by the empty string, while empty strings will be replaced with `"-"`. The replacement of values is considered *simultaneous*, which is why `null` values won't be replaced with `"-"`. 
-This will also replace booleans `True` with the integer `1` and booleans `False` with the integer `0` (Note that it **won't** replace textual values `"true"` or `"True"`, so you're safe on that end)
+You can provide a mapping such special values. Those will be applied *after* the *post-processing* step.
+
+For instance, in the following example, `null` JSON values (or rather `None` values generated during the processing) will be replaced by the empty string, while empty strings will be replaced with `"-"`. The replacement of values is considered *simultaneous*, which is why `null` values won't be replaced with `"-"`. 
+This will also replace booleans `True` with the integer `1` and booleans `False` with the integer `0` (Note that it **won't** replace textual values `"true"` or `"True"`, so you're safe on that end). 
 
 ```json
 {
@@ -207,6 +209,7 @@ This will also replace booleans `True` with the integer `1` and booleans `False`
 }
 ```
 
+Note: even though the keys `null` and such are strings, they only indicate which special value to replace. You should not expect to add an unsupported value for it to be converted, neither should you expect `"null"` (string) and such to be replaced during the process. If you want such replacement, you may either pre-processs your JSON input through a `"pre-processing"` JQ script or through the use of another program of your choice (to replace any value before feeding it to this program). You can also aim to post-process the CSV output with a script or library like [`pandas`](https://pandas.pydata.org/) and its [`read_csv`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html) / `write_csv`
 
 ## Generating outline files
 
