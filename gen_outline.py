@@ -144,6 +144,8 @@ def init_parser():
     
     parser.add_argument('--no-duplicate-accessors', '--no-duplicates', action="store_true",
         help="When used with JQ processing fields, it will remove accessors that jq covers")
+    
+    parser.add_argument('--debug', action="store_true", help="Debug-oriented behaviour (with less error silencing)")
     return parser
 
 
@@ -153,16 +155,28 @@ def main():
     
     assert args.output_file is None or (len(args.filepaths)==1 and args.output_file is not None), "Multiple inputs but 1 output path. Discard the output argument"
     
-    for path in args.filepaths:
-        with open(path, "r") as filehandle:
-            outline = make_outline(filehandle, args.each_line, args.collection, args.sortKeys, args.dropRootKeys, args.jq_processing, args.fieldwise_jq_processing, args.no_duplicate_accessors)
-            outfile = args.output_file
-            if outfile is None:
-                fileName, fileExtension = os.path.splitext(filehandle.name)
-                outfile = fileName + '.outline.json'
+    error_details = None
+    for i, path in enumerate(args.filepaths):
+        try:
+            with open(path, "r") as filehandle:
+                outline = make_outline(filehandle, args.each_line, args.collection, args.sortKeys, args.dropRootKeys, args.jq_processing, args.fieldwise_jq_processing, args.no_duplicate_accessors)
+                outfile = args.output_file
+                if outfile is None:
+                    fileName, fileExtension = os.path.splitext(filehandle.name)
+                    outfile = fileName + '.outline.json'
 
-        with open(outfile, 'w') as f:
-            json.dump(outline, f, indent=2, sort_keys=False)
+            with open(outfile, 'w') as f:
+                json.dump(outline, f, indent=2, sort_keys=False)
+        
+        except (IndexError, KeyError, AttributeError) as err:
+            error_details = {"error": err, "path": path, "no": i+1}
+            error_msg  = ("------------------------\n")
+            error_msg += (" Error with file no {no}: {path}\n".format(**error_details))
+            error_msg += ("------------------------\n")
+            error_msg += ("Error stack trace: \n")
+            if args.debug:
+                print(error_msg)
+                raise err
     
     
     if args.fieldwise_jq_processing:
@@ -174,6 +188,10 @@ def main():
             print("...\nWARNING: are you sure you want to remove all default accessors ? "
                 "(It will dramatically reduce the processing speed of the conversion. "
                 "It should only be used for debug purpose or to learn how to create an outline file.)")
+    
+    if error_details:
+        print(error_msg)
+        raise error_details["error"]
 
 
 if __name__ == '__main__':
