@@ -26,7 +26,7 @@ except ModuleNotFoundError:
     jqp = None
 
 
-__version__ = "0.2.2.1"
+__version__ = "0.2.2.2"
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -105,6 +105,7 @@ class Json2Csv(object):
         # performance: avoid calling jq if identity
         data = jqp.one(self.preprocessing, data, vars=self.context_constants) if jqp and self.preprocessing else data
         
+        ## Mapping and processing
         self.process_each(data)
         
         # performance: avoid calling jq if identity
@@ -115,7 +116,16 @@ class Json2Csv(object):
         # special values
         vnone = self.special_values_mapping.get("null", "")
         vempty = self.special_values_mapping.get("empty", "")
+        vtrue = self.special_values_mapping.get("true", "true")
+        vfalse = self.special_values_mapping.get("false", "false")
+        
+        # a tad faster than the 2 calls equivalent
+        # however, replace it if needed for maintenance
         self.rows = self._replace_nulls(self.rows, vnone, vempty)
+        # self.rows = self._replace_value(self.rows, None, vnone, by_identity=True)
+        # self.rows = self._replace_value(self.rows, "", vempty, by_identity=False)
+        self.rows = self._replace_value(self.rows, True, vtrue, by_identity=True)
+        self.rows = self._replace_value(self.rows, False, vfalse, by_identity=True)
     
     
     def _update_header_keys(self, data_rows):
@@ -141,13 +151,31 @@ class Json2Csv(object):
         _ = [self.header_keys.pop(key) for key in keys_to_remove]
         pass
     
+    def _replace_value(self, data, target, new_value, by_identity):
+        """Replace a value
+        :param data: rows (list of dicts)
+        :param target: value to look for and try to replace
+        :param new_value: value to replace with
+        :param bool by_identity: compare by identity (if True, compares with the "is" operator), or by equality (with "==" operator)
+        """
+        f_replace_by_identity = lambda to_replace, old, value_for: old if (old is not to_replace) else value_for
+        f_replace_by_equality = lambda to_replace, old, value_for: old if (old != to_replace) else value_for
+        
+        f_replace_ref = f_replace_by_identity if by_identity else f_replace_by_equality
+        
+        f_on_row = lambda row: {key: f_replace_ref(target, orig_val, new_value) for key, orig_val in row.items()}
+        transformed = list(map(f_on_row, data))
+        return transformed
+    
+    
     def _replace_nulls(self, data, value_for_none=None, value_for_empty=None):
         value_for_none = value_for_none if value_for_none is not None else ""
         value_for_empty = value_for_empty if value_for_empty is not None else ""
         
-        replace = lambda x: x if (x is not None and x != "") else (value_for_none if x is None else value_for_empty)
-        transformed = list(map(lambda row: {key: replace(value) for key, value in row.items()}, data))
+        f_replace = lambda x: x if (x is not None and x != "") else (value_for_none if x is None else value_for_empty)
+        transformed = list(map(lambda row: {key: f_replace(value) for key, value in row.items()}, data))
         return transformed
+    
     
     def _target_data(self, data):
         if self.collection and self.collection in data:

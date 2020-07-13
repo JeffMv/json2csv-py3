@@ -91,7 +91,7 @@ def make_outline(json_file, each_line, collection_key, sort_keys, drop_root_keys
     elif drop_root_keys:
         outline['dropRootKeys'] = True
    
-    outline["special-values-mapping"] = {"null": "null", "empty": ""}
+    outline["special-values-mapping"] = {"null": "null", "empty": "", "true": "true", "false": "false"}
     
     if dummy_jq or fieldwise_jq:  # encourage using more optimal processing
         outline["context-constants"] = {}
@@ -157,6 +157,7 @@ def main():
     
     error_details = None
     for i, path in enumerate(args.filepaths):
+        print("%i / %i) Processing file at %s" % (i+1, len(args.filepaths), path))
         try:
             with open(path, "r") as filehandle:
                 outline = make_outline(filehandle, args.each_line, args.collection, args.sortKeys, args.dropRootKeys, args.jq_processing, args.fieldwise_jq_processing, args.no_duplicate_accessors)

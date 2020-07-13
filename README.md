@@ -188,16 +188,21 @@ For instance, you could use this context to pass in some useful constants that y
 
 
 
-#### Handling `null`, `None` and empty strings
+
+
+#### Handling special values like `null`, `None`, `true`, `false` and empty strings
+
+Some values do not have a unique representation accross languages and file types. Or you may want to provide your own mappings to make them compatible with other tools/workflow you have. For instance, Python has `True` while Javascript/JSON use `true` (lowercase), so representing the type correctly may help you with automatic type recognition when reading the CSV.
 
 You can provide a mapping for special values. Those will be applied *after* the *post-processing* step.
 
-For instance, in the following example, `null` JSON values (and `None` values generated during the processing) will be replaced by the empty string, while empty strings will be replaced with `"-"`. The replacement of values is considered *simultaneous*, which is why `null` values won't be replaced with `"-"`.
+For instance, in the following example, `null` JSON values (and `None` values generated during the processing) will be replaced by the empty string, while empty strings will be replaced with `"-"`. The replacement of values is considered *simultaneous*, which is why `null` values won't be replaced with `"-"`. 
+This will also replace booleans `True` with the integer `1` and booleans `False` with the integer `0` (Note that it **won't** replace textual values `"true"` or `"True"`, so you're safe on that end)
 
 ```json
 {
   ...,
-  "special-values-mapping": {"null": "", "empty": "-"},
+  "special-values-mapping": {"null": "", "empty": "-", "true": 1, "false": 0},
   ...
 }
 ```
