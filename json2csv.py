@@ -100,8 +100,13 @@ class Json2Csv(object):
     def load(self, json_file):
         data = json.load(json_file)
         
+        ## If we wanted to allow the user to use JQ to select the keys to use
+        ## we would change the order of both these lines (... self._target_data(...) and data = jqp.one(...) ...)
+        ## 
+        ## Or another behaviour you may want to allow by swapping their order
+        ## is allowing the user to use keys and data outside the self.collection
+        ## attribute as part of the preprocessing. It offers more possibilities
         data = self._target_data(data)
-        
         # performance: avoid calling jq if identity
         data = jqp.one(self.preprocessing, data, vars=self.context_constants) if jqp and self.preprocessing else data
         
