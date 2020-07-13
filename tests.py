@@ -21,7 +21,7 @@ class TestJson2Csv(unittest.TestCase):
         outline = {'map': [['id', '_id'], ['count', 'count']]}
         loader = Json2Csv(outline)
         test_data = json.loads('{"_id" : "Someone","count" : 1}')
-        row = loader.process_row(test_data)
+        row = loader.process_row(test_data, None)
 
         self.assertIs(type(row), dict)
         self.assertIn('id', list(row.keys()))
@@ -37,7 +37,7 @@ class TestJson2Csv(unittest.TestCase):
         test_data = json.loads(
             '{"source": {"author": "Someone"}, "message": {"original": "Hey!", "Revised": "Hey yo!"}}'
         )
-        row = loader.process_row(test_data)
+        row = loader.process_row(test_data, None)
 
         self.assertIs(type(row), dict)
         self.assertIn('author', list(row.keys()))
@@ -53,16 +53,20 @@ class TestJson2Csv(unittest.TestCase):
     def test_process_each(self):
         outline = {'map': [['id', '_id'], ['count', 'count']], 'collection': 'result'}
         loader = Json2Csv(outline)
+        print(f"loader.key_map: {loader.key_map}")
 
         test_data = json.loads('{"result":[{"_id" : "Someone","count" : 1}]}')
+        print(f"test_data: {test_data}")
         loader.process_each(test_data)
 
+        print(f"loader.rows: {loader.rows}")
         self.assertEqual(len(loader.rows), 1)
         row = loader.rows[0]
         self.assertIs(type(row), dict)
         self.assertIn('id', list(row.keys()))
         self.assertIn('count', list(row.keys()))
 
+        print(f"row: {row}")
         self.assertEqual(row['id'], 'Someone')
         self.assertEqual(row['count'], 1)
 
@@ -177,7 +181,7 @@ class TestGenOutline(unittest.TestCase):
 
     def test_basic(self):
         with open('fixtures/data.json') as json_file:
-            outline = make_outline(json_file, False, 'nodes')
+            outline = make_outline(json_file, False, 'nodes', True, special_values=False)
             expected = {
                 'collection': 'nodes',
                 'map': [
@@ -190,7 +194,7 @@ class TestGenOutline(unittest.TestCase):
 
     def test_deeply_nested(self):
         with open('fixtures/deeply_nested.json') as json_file:
-            outline = make_outline(json_file, False, 'nodes')
+            outline = make_outline(json_file, False, 'nodes', True, special_values=False)
             expected = {
                 'collection': 'nodes',
                 'map': [
@@ -207,7 +211,7 @@ class TestGenOutline(unittest.TestCase):
     def test_different_keys_per_row(self):
         "Outline should contain the union of the keys."
         with open('fixtures/different_keys_per_row.json') as json_file:
-            outline = make_outline(json_file, False, 'nodes')
+            outline = make_outline(json_file, False, 'nodes', True, special_values=False)
             expected = {
                 'collection': 'nodes',
                 'map': [
@@ -223,7 +227,7 @@ class TestGenOutline(unittest.TestCase):
 
     def test_line_delimited(self):
         with open('fixtures/line_delimited.json') as json_file:
-            outline = make_outline(json_file, True, None)
+            outline = make_outline(json_file, True, None, True, special_values=False)
             expected = {
                 'map': [
                     ('message_Revised', 'message.Revised'),

@@ -76,7 +76,7 @@ def key_map_to_list(key_map, should_sort=False, dummy_jq=False, no_duplicate_acc
         return [(path_join(k, '_'), path_join(k)) for k in base]
 
 
-def make_outline(json_file, each_line, collection_key, sort_keys, drop_root_keys=False, dummy_jq=False, fieldwise_jq=False, no_duplicate_accessors=False):
+def make_outline(json_file, each_line, collection_key, sort_keys, drop_root_keys=False, special_values=True, dummy_jq=False, fieldwise_jq=False, no_duplicate_accessors=False):
     if each_line:
         iterator = line_iter(json_file)
     elif collection_key:
@@ -90,14 +90,16 @@ def make_outline(json_file, each_line, collection_key, sort_keys, drop_root_keys
         outline['collection'] = collection_key
     elif drop_root_keys:
         outline['dropRootKeys'] = True
-   
-    outline["special-values-mapping"] = {"null": "null", "empty": "", "true": "true", "false": "false"}
+    
+    if special_values:
+        outline["special-values-mapping"] = {"null": "null", "empty": "", "true": "true", "false": "false"}
     
     if dummy_jq or fieldwise_jq:  # encourage using more optimal processing
         outline["context-constants"] = {}
         outline["pre-processing"] = "."
         outline["map-processing"] = "."
         outline["post-processing"] = "."
+    
     outline.update({'map': key_map_to_list(key_map, sort_keys, fieldwise_jq, no_duplicate_accessors)})
     return outline
 
@@ -160,7 +162,7 @@ def main():
         print("%i / %i) Processing file at %s" % (i+1, len(args.filepaths), path))
         try:
             with open(path, "r") as filehandle:
-                outline = make_outline(filehandle, args.each_line, args.collection, args.sortKeys, args.dropRootKeys, args.jq_processing, args.fieldwise_jq_processing, args.no_duplicate_accessors)
+                outline = make_outline(filehandle, args.each_line, args.collection, args.sortKeys, args.dropRootKeys, True, args.jq_processing, args.fieldwise_jq_processing, args.no_duplicate_accessors)
                 outfile = args.output_file
                 if outfile is None:
                     fileName, fileExtension = os.path.splitext(filehandle.name)

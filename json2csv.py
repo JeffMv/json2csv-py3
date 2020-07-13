@@ -101,7 +101,8 @@ class Json2Csv(object):
         data = json.load(json_file)
         
         ## If we wanted to allow the user to use JQ to select the keys to use
-        ## we would change the order of both these lines (... self._target_data(...) and data = jqp.one(...) ...)
+        ## we would change the order of both these lines
+        ## (... self._target_data(...) and data = jqp.one(...) ...)
         ## 
         ## Or another behaviour you may want to allow by swapping their order
         ## is allowing the user to use keys and data outside the self.collection
@@ -194,9 +195,9 @@ class Json2Csv(object):
         """
         # data = self._target_data(data)  # already done in self.load(..)
         
-        for i, d in enumerate(data):
-            logging.info(d)
-            self.rows.append(self.process_row(d, i))
+        for i, entry in enumerate(data):
+            logging.info(entry)
+            self.rows.append(self.process_row(entry, i))
 
     def process_row(self, item, index):
         """Process a row of json data against the key map
@@ -232,13 +233,17 @@ class Json2Csv(object):
         
         ######   Individual field-wise JQ selectors   ######
         ### Note: The user should rely mostly on row-wise map-processing
-        ###       instead of this field-wise calls. This is left here for
+        ###       instead of these field-wise calls. This is left here for
         ###       historical reason since the code was still working.
+        ###
+        ### Field-wise JQ processing slows down the processing linearly with
+        ### the number of rows (and the number of different field-wise).
+        ### NB calls to JQ = NB Rows X NB Field-wise
         ###
         ### Design choice: jq scripts DO NOT override default accessors
         ### because accessing using JQ *dramatically* decreases performance
         ### for every call. It also means it is far better to group every JQ
-        ### calls unless there is no other choice
+        ### calls unless there is no other choice.
         
         for header, data in self.key_processing_map.items():
             if jqp and row[header] is None and data is not None:  # row[header] is None:
@@ -360,9 +365,6 @@ def init_parser():
 
 
 def convert_json_to_csv(json_file, key_map, output_csv, no_header, make_strings, each_line, delimiter, allow_empty_output):
-    """
-    :param dict key_map:
-    """
     special_inputs_map = {"\\t":"\t", "\\n":"\n"}
     csv_delimiter = special_inputs_map.get(delimiter, delimiter)
     
@@ -393,10 +395,6 @@ if __name__ == '__main__':
     parser = init_parser()
     args = parser.parse_args()
     
-    # levels_of_log = {0:logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
-    # print("verbose: {}, level: ...".format(args.verbose))
-    # logging.basicConfig(level=levels_of_log[args.verbose])  # not working if alreary made earlier
-        
     key_map_content = json.loads(jsmin(args.key_map.read()))
     
     if args.output_csv is None:
