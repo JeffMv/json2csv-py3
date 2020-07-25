@@ -382,7 +382,9 @@ def convert_json_to_csv(json_file, key_map, output_csv, no_header, make_strings,
             fileName, fileExtension = os.path.splitext(json_file.name)
             outfile = fileName + '.csv'
         
-        os.makedirs(os.path.dirname(outfile), exist_ok=True)
+        destdir = os.path.dirname(outfile)
+        if destdir:
+            os.makedirs(destdir, exist_ok=True)
 
         loader.write_csv(filename=outfile, make_strings=make_strings, write_header=not no_header, delimiter=csv_delimiter, allow_empty=allow_empty_output)
     except Exception as err:
