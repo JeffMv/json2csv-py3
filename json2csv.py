@@ -323,13 +323,15 @@ class MultiLineJson2Csv(Json2Csv):
 
 def get_filepath_formatted_from_filepath(template, filepath):
     folder = os.path.dirname(filepath)
+    dirbasename = os.path.basename(folder)
     basename = os.path.basename(filepath)
     base, ext = os.path.splitext(basename)
     ext = ext[1:]
     fp = filepath
     output = template.format(basename=basename, path=filepath,
                              base=base, ext=ext,
-                             directory=folder, folder=folder, dirname=folder)
+                             directory=folder, folder=folder, dirname=folder,
+                             dirbasename=dirbasename, foldername=dirbasename)
     return output
 
 
