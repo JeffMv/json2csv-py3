@@ -2,6 +2,7 @@
 
 import json
 import os, os.path
+import operator
 
 from collections import OrderedDict
 from functools import reduce
@@ -27,13 +28,30 @@ def line_iter(f):
 
 def coll_iter(f, coll_key):
     data = json.load(f)
-    for obj in data[coll_key]:
+    if coll_key in data:
+        data = data[coll_key]
+    elif coll_key[0] == ".":
+        data = get_for_keypath(data, coll_key)
+    
+    for obj in data:
         yield obj
+
 
 def dropkey_iter(f):
     data = json.load(f)
     for obj in (data.values() if isinstance(data, dict) else data):
         yield obj
+
+
+def get_for_keypath(data, keypath):
+    if keypath:
+        keys = keypath.split(".")
+        keys = keys if keys[0] else keys[1:] 
+        result = reduce(operator.getitem, keys, data)
+    else:
+        result = None
+    return result
+
 
 def gather_key_map(iterator):
     key_map = {}

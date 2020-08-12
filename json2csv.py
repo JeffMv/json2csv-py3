@@ -26,7 +26,7 @@ except ModuleNotFoundError:
     jqp = None
 
 
-__version__ = "0.2.2.3"
+__version__ = "0.2.2.4"
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -184,8 +184,12 @@ class Json2Csv(object):
     
     
     def _target_data(self, data):
-        if self.collection and self.collection in data:
-            data = data[self.collection]
+        if self.collection:
+            if self.collection in data:
+                data = data[self.collection]
+            elif self.collection[0] == ".":
+                data = self.get_for_keypath(data, self.collection)
+            
         elif self.root_array:
             data = list(data.values()) if isinstance(data, dict) else data
         return data
@@ -300,6 +304,18 @@ class Json2Csv(object):
             if write_header:
                 writer.writeheader()
             writer.writerows(out)
+    
+        
+    def get_for_keypath(self, data, keypath):
+        if keypath:
+            keys = keypath.split(".")
+            keys = keys if keys[0] else keys[1:] 
+            result = reduce(operator.getitem, keys, data)
+        else:
+            result = None
+        return result
+
+
 
 
 class MultiLineJson2Csv(Json2Csv):
