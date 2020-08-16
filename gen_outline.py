@@ -113,7 +113,7 @@ def make_outline(json_file, each_line, collection_key, sort_keys, drop_root_keys
         outline["special-values-mapping"] = {"null": "null", "empty": "", "true": "true", "false": "false"}
     
     if dummy_jq or fieldwise_jq:  # encourage using more optimal processing
-        outline["context-constants"] = {}
+        outline["context-constants"] = {"aux": {}}
         outline["pre-processing"] = "."
         outline["map-processing"] = "."
         outline["post-processing"] = "."

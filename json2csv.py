@@ -26,7 +26,7 @@ except ModuleNotFoundError:
     jqp = None
 
 
-__version__ = "0.2.2.4"
+__version__ = "0.2.3.0"
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -65,6 +65,9 @@ class Json2Csv(object):
         self.postprocessing = self._optimized_jq_selector(self.postprocessing)
         self.context_constants = outline.get('context-constants', {})
         self.special_values_mapping = outline.get('special-values-mapping', {})
+        
+        # pyjq does not support multiple root keys for the 'vars' argument
+        assert not self.context_constants or len(self.context_constants) <= 1, "Expecting only 1 root key in context_constants. To use more constants, place them in a dictionary under the root key 'aux'"
         
         key_map = OrderedDict()
         key_processing_map = OrderedDict()
@@ -108,6 +111,13 @@ class Json2Csv(object):
         ## is allowing the user to use keys and data outside the self.collection
         ## attribute as part of the preprocessing. It offers more possibilities
         data = self._target_data(data)
+        
+        if not self.context_constants:
+            self.context_constants = {"aux":{"_file_": json_file.name}}
+        else:
+            assert "aux" in self.context_constants, "Missing the root key 'aux' in 'context-constants' of the outline file"
+            self.context_constants["aux"]["_file_"] = json_file.name    
+        
         # performance: avoid calling jq if identity
         data = jqp.one(self.preprocessing, data, vars=self.context_constants) if jqp and self.preprocessing else data
         

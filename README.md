@@ -153,23 +153,37 @@ Note: You can pass `null` or `"."` as a JQ script to avoid launching a JQ proces
 
 #### Context while running JQ commands
 
-You can provide a general context for constants by setting the following key in the root of the outline file:
+You can provide a general context for constants by setting the `context-constants` key in the root of the outline file and name the root of the context `aux` (*aux* as in auxiliary inputs):
 
 ```json
 {
   ...,
-  "context-constants": {"contextualVar1": "value"},
+  "context-constants": {"aux": {"constant1": "value", "CONSTANT2": 12}},
   ...
 }
 ```
 
-For instance, you could use this context to pass in some useful constants that your data file is unaware of, for instance a country map to convert country names to country ISO codes and add that country ISO code as a column to in your CSV file. (This example also makes use of the `ascii_downcase` JQ filter that converts *ascii* characters to lowercase).
+which you can use in JQ processing fields as the following example:
 
 ```json
 {
   ...,
-  "context-constants": {"countryCodes":{"united states":"us","france":"fr", "...":"..."}},
-  "pre-processing": "map( . + {contryCode: .[$countryCodes[.countryName | ascii_downcase]]} )",
+  "pre-processing": "map( . + {externalField: $aux.constant1} )",
+  ...,
+  "map":[
+  	"anotherNameIfYouWant",
+  	"externalField"
+  ]
+}
+```
+
+For a more elaborated example, you could use this context to pass in some useful constants that your data file is unaware of, for instance a country map to convert country names to country ISO codes and add that country ISO code as a column in your CSV file. (This example also makes use of the `ascii_downcase` JQ filter that converts *ascii* characters to lowercase).
+
+```json
+{
+  ...,
+  "context-constants": {"aux": {"countryCodes":{"united states":"us","france":"fr", "...":"..."}}},
+  "pre-processing": "map( . + {contryCode: ($aux.countryCodes[.countryName | ascii_downcase])} )",
   "map": [
     ...
     [
@@ -187,6 +201,10 @@ For instance, you could use this context to pass in some useful constants that y
 ```
 
 
+
+**Filepath in context**
+
+Sometimes when processing multiple files with the same outline file, you might want to use the current JSON file's path in a JQ filter processing. To do that, there is an auxiliary value of `_file_` in the `context-constants` you can access as `$aux._file_` in your JQ filters.
 
 
 
@@ -257,8 +275,11 @@ Is parsed into
 The class variables `SEP_CHAR`, `KEY_VAL_CHAR`, `DICT_SEP_CHAR`, `DICT_OPEN`, and `DICT_CLOSE` can be changed to modify the output formatting. For nested dictionaries, there are settings that have been commented out that work well. 
 
 
-## Upcoming features
+
+## Roadmap
 
 - [X] Ability to use JQ filters to further control the CSV output
   - [X] Example JQ filters using gen_outline.py
   - [x] Document usage of JQ filters
+  - [x] Enable the use of constants external to the JSON file
+  - [x] Add a way to get the filename of the JSON file in JQ filters
