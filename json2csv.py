@@ -26,7 +26,7 @@ except ModuleNotFoundError:
     jqp = None
 
 
-__version__ = "0.2.3.0"
+__version__ = "0.2.3.1"
 
 logging.basicConfig(level=logging.WARNING)
 
