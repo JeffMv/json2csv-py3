@@ -88,10 +88,15 @@ If you have installed the extra dependancies, you will be able to use comments:
 
 ```js
 {
+  // this is a comment. Install the extra dependencies to use them.
+
+  // a map of accessors
   "map": [
-    ["authorName", "source.author"],
-    // this is a comment
-    ["messageContent", "message.original"]
+    ["authorName", "source.author"], // takes the path '{"source": "author": ...}}' from the JSON and creates a column named "authorName" in the CSV
+
+    ["messageContent", "message.original"],
+
+    ["authorFirstName", "firstName"] // an accessor created dynamically using JQ and the 'pre-processing' field
   ],
   //// "collection" is used when the JSON's root is a dictionary.
   //// You pass in the key that contains your data
@@ -104,12 +109,16 @@ If you have installed the extra dependancies, you will be able to use comments:
   //// To do that, you would drop them with the option
   // "dropRootKeys": true,
 
-  // When using JQ processing, it is possible to run custom JQ scripts
+  // When using JQ processing, it is possible to run custom JQ scripts.
   // Using pre-processing, you access the entire data collection as it was
-  // after the collection key is applies
+  // after the collection key is applied.
+  // Any key you create in the data will be made available for use with accessors, and the reverse applies for deleted keys.
   "pre-processing": "map(. + {firstName: (.source.author|split(\" \")[0])})",
-  // post-processing is performed after. You must NOT change the structure
-  // unless you know what you are doing.
+  
+  // post-processing is performed after the 'map' accessors are applied.
+  // Make sure you preserve every previous data by using the "." in JQ.
+  // You may still add/delete fields in this step, which will result in
+  // columns being created/deleted in the resulting CSV
   "post-processing": "map(. + {description: \"Message has \(.messageContent|length) characters.\"})"
 }
 ```
@@ -133,7 +142,7 @@ There are 3 main places you can place your scripts:
   
   **[PERFORMANCE HIT]** Since a jq process is launched and executed for each row, it can make a huge difference in completion time, especially with >= 1000 elements.
   **Note**: Only use it if it is really impossible to achieve what you need with either pre-/post-processing.
-Remember that **most of the time**, you can use the combination of `pre-processing` to lay some variables with a `map` and then use `post-processing` to use these variables while ensuring you delete them with jq's `del(.foo)` so that they don't show up in the CSV file.
+Remember that **most of the time**, you can use the combination of `pre-processing` to lay some variables with a `map` and then use `post-processing` to use these variables. Then you can ensure you delete temporary columns with jq's `del(.foo)` so that they don't show up in the CSV file.
   The outline file would look like:
   
   ```json
@@ -146,6 +155,16 @@ Remember that **most of the time**, you can use the combination of `pre-processi
   ```
 
 
+You may also use an array for readability when constructing the JQ scripts. The array will be joined as if it were only one single string. This behaviour allows for more flexibility and ease of conversion.
+
+```json
+  "pre-processing": [
+    ".",
+    "| map( . ",
+      "  | + {contryCode: ($aux.countryCodes[.countryName | ascii_downcase])}",
+    "| . )"
+  ],
+```
 
 Note: You can pass `null` or `"."` as a JQ script to avoid launching a JQ process.
 

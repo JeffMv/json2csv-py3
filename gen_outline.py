@@ -128,6 +128,7 @@ def init_parser():
     parser.add_argument('filepaths', nargs="+",
         help="Path to JSON data file to analyze")
     parser.add_argument('-o', '--output-file', type=str, default=None,
+        dest="output_file",
         help="Path to outline file to output. Omitting this will create a file based on the input file's path.")
     
     group = parser.add_mutually_exclusive_group(required=True)
@@ -159,8 +160,8 @@ def init_parser():
         help=("DEPRECATED: [drastic performance hit] "
             "Field-wise JQ processing fields for accessors. "
             "Remember that using JQ commands instead of accessors "
-            "significantly decreases performance. Prefer relying on"
-            "other row-wise JQ processing if "))
+            "significantly decreases performance. Prefer relying on "
+            "other row-wise JQ processing unless you absolutely can't do otherwise."))
     
     parser.add_argument('--no-duplicate-accessors', '--no-duplicates', action="store_true",
         help="When used with JQ processing fields, it will remove accessors that jq covers")

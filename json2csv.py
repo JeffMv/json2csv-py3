@@ -91,9 +91,11 @@ class Json2Csv(object):
     def _optimized_jq_selector(self, selector):
         """nullifies if the command is the identity. Against performance issue.
         """
-        ### allow multiline JQ commands (for readability) through the use of
-        ### arrays
+        ## allow multiline JQ commands (for readability) through the use of
+        ## arrays
         if isinstance(selector, list):
+            ## the idea is to minimize the number of steps to convert from/to the array
+            ## version. Using an array is meant to be a sugar for readability, not a hindrance when converting from/to it.
             selector = "".join(selector)
         
         cmd = (selector if selector else ".").strip()
