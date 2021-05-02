@@ -7,6 +7,12 @@ import operator
 from collections import OrderedDict
 from functools import reduce
 
+try:
+    from jsmin import jsmin
+except ModuleNotFoundError:
+    print('jsmin is not installed. Hence comments in outline file are disabled. Run "pip install jsmin" to install it')
+    jsmin = lambda x: x
+
 
 def key_paths(d):
     def helper(path, x):
@@ -121,6 +127,51 @@ def make_outline(json_file, each_line, collection_key, sort_keys, drop_root_keys
     outline.update({'map': key_map_to_list(key_map, sort_keys, fieldwise_jq, no_duplicate_accessors)})
     return outline
 
+
+def mainExtractJqScripts(inputs, output, escapeQuotes):
+    """CLI utility to extract the JQ scripts the user entered in an outline.
+    """
+    def extractFromValue(data, escape):
+        txt = ""
+        if isinstance(data, str):
+            txt = data
+        elif isinstance(data, (list, tuple)):
+            txt = "\n".join(data)
+        elif data is None:
+            txt = "."
+        else:
+            print("======== Debug ========")
+            print(data)
+            raise TypeError("Unsupported data type: %s" % type(data))
+        
+        if escape:
+            txt = """jq {}\n""".format(json.dumps(txt))
+        else:
+            txt = """jq '{}'\n""".format(txt)
+        return txt
+    
+    def extractFromSingleFile(filepath):
+        with open(filepath, "r") as fh:
+            content = fh.read()
+        data = json.loads(jsmin(content))
+        txt = ("#### context data available within the script\n{}\n\n\n\n"
+            "#### pre-processing script\n{}\n\n\n\n"
+            "#### post-processing script\n{}\n"
+            ).format(data['context-constants'],
+                     extractFromValue( data['pre-processing'], escapeQuotes ),
+                     extractFromValue( data['post-processing'], escapeQuotes )
+            )
+        return txt
+    
+    txt = "\n\n\n\n".join(["###############\n## From the file {}\n{}".format(fp, extractFromSingleFile(fp)) for fp in inputs])
+    if output:
+        with open(output, "w") as fh:
+            fh.write(txt)
+    else:
+        print(txt)
+    pass
+
+
 def init_parser():
     import argparse
     parser = argparse.ArgumentParser(description="Generate an outline file for json2csv.py")
@@ -142,9 +193,16 @@ def init_parser():
             "dictionary or an array as the root. It respectively "
             "drops the string keys or the index keys."))
     
+    group.add_argument('--extract-jq-scripts', action="store_true",
+        dest="extractJq",
+        help=("Utility command to extract the scripts from an existing outline"))
+    
+    
     parser.add_argument('--sort-keys', '-s', '--sort', action="store_true", dest="sortKeys",
         help="Sorts the 'map' output alphabetically")
-    parser.add_argument('-p', '--jq-processing', '--processing', '--jq',
+    
+    jq_group = parser.add_argument_group("JQ options", "Options related to processing using JQ")
+    jq_group.add_argument('-p', '--jq-processing', '--processing', '--jq',
         action="store_true", dest="jq_processing",
         help=("Include JQ processing fields. You have the choice between main "
             "entrypoints 'pre-processing', 'map-processing' and "
@@ -155,7 +213,7 @@ def init_parser():
             "are both executed only once, respectively before all the mapping "
             "and after the mapping)."))
     
-    parser.add_argument('--field-wise-jq-processing', action="store_true",
+    jq_group.add_argument('--field-wise-jq-processing', action="store_true",
         dest="fieldwise_jq_processing",
         help=("DEPRECATED: [drastic performance hit] "
             "Field-wise JQ processing fields for accessors. "
@@ -163,8 +221,11 @@ def init_parser():
             "significantly decreases performance. Prefer relying on "
             "other row-wise JQ processing unless you absolutely can't do otherwise."))
     
-    parser.add_argument('--no-duplicate-accessors', '--no-duplicates', action="store_true",
+    jq_group.add_argument('--no-duplicate-accessors', '--no-duplicates', action="store_true",
         help="When used with JQ processing fields, it will remove accessors that jq covers")
+    
+    jq_group.add_argument('--escape-quotes', action="store_true", 
+        dest="escapeQuotes", help="Escaping double quotes in the output")
     
     parser.add_argument('--debug', action="store_true", help="Debug-oriented behaviour (with less error silencing)")
     return parser
@@ -174,9 +235,16 @@ def main():
     parser = init_parser()
     args = parser.parse_args()
     
+    ## option 1 
+    if args.extractJq:
+        mainExtractJqScripts(args.filepaths, args.output_file, args.escapeQuotes)
+        exit()
+    
+    ## option 2
     assert args.output_file is None or (len(args.filepaths)==1 and args.output_file is not None), "Multiple inputs but 1 output path. Discard the output argument"
     
     error_details = None
+    
     for i, path in enumerate(args.filepaths):
         print("%i / %i) Processing file at %s" % (i+1, len(args.filepaths), path))
         try:
