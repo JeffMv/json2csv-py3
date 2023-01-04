@@ -386,6 +386,7 @@ def init_parser():
                         help="Process each line of JSON file separately")
     parser.add_argument('--encoding', '--input-encoding', dest="input_encoding", help="Custom encoding to use when reading input files. Especially useful on Windows since an ANSI-compatible encoding might otherwise be used.")
     parser.add_argument('--output-encoding', dest="output_encoding", help="Custom output file encoding")
+    parser.add_argument('--outline-encoding', dest="outline_encoding", help="Custom file encoding for the key maps file (outline file)")
     parser.add_argument('--verbose', type=int, default=0, help="Level of logs")
     
     
@@ -429,7 +430,11 @@ def main(args=None):
     parser = init_parser()
     args = parser.parse_args(args)
     
-    key_map_content = json.loads(jsmin(args.key_map.read()))
+    # key_map_content = json.loads(jsmin(args.key_map.read()))
+    # allow custom encodings
+    with open(args.key_map.name, "r", encoding=args.outline_encoding) as fh:
+        key_map_content = json.loads(jsmin(fh.read()))
+    
     
     if args.output_csv is None:
         output_paths = [None for _ in args.input_json_files]

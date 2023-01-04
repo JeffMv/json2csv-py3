@@ -7,8 +7,6 @@ from . import gen_outline
 if __name__ == "__main__":  # pragma: no cov
     args = os.sys.argv
     prog = args[1]
-    print("args: {}".format(args))
-    print("prog: {}".format(prog))
     
     if prog.strip().lower() in ["gen_outline", "go", "gen", "outline"]:
       gen_outline.main(args[2:])  # pragma: no cov
