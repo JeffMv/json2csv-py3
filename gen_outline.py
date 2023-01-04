@@ -128,7 +128,7 @@ def make_outline(json_file, each_line, collection_key, sort_keys, drop_root_keys
     return outline
 
 
-def mainExtractJqScripts(inputs, output, escapeQuotes):
+def mainExtractJqScripts(inputs, output, escapeQuotes, input_encoding=None, output_encoding=None):
     """CLI utility to extract the JQ scripts the user entered in an outline.
     """
     def extractFromValue(data, escape):
@@ -151,7 +151,7 @@ def mainExtractJqScripts(inputs, output, escapeQuotes):
         return txt
     
     def extractFromSingleFile(filepath):
-        with open(filepath, "r") as fh:
+        with open(filepath, "r", encoding=input_encoding) as fh:
             content = fh.read()
         data = json.loads(jsmin(content))
         txt = ("#### context data available within the script\n{}\n\n\n\n"
@@ -165,7 +165,7 @@ def mainExtractJqScripts(inputs, output, escapeQuotes):
     
     txt = "\n\n\n\n".join(["###############\n## From the file {}\n{}".format(fp, extractFromSingleFile(fp)) for fp in inputs])
     if output:
-        with open(output, "w") as fh:
+        with open(output, "w", encoding=output_encoding) as fh:
             fh.write(txt)
     else:
         print(txt)
@@ -181,7 +181,9 @@ def init_parser():
     parser.add_argument('-o', '--output-file', type=str, default=None,
         dest="output_file",
         help="Path to outline file to output. Omitting this will create a file based on the input file's path.")
-    
+    parser.add_argument('--encoding', '--input-encoding', dest="input_encoding", help="Custom encoding to use when reading input files. Especially useful on Windows since an ANSI-compatible encoding might otherwise be used.")
+    parser.add_argument('--output-encoding', dest="output_encoding", help="Custom output file encoding")
+
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-e', '--each-line', action="store_true", dest="each_line",
         help="Process each line of JSON file separately")
@@ -227,6 +229,7 @@ def init_parser():
     jq_group.add_argument('--escape-quotes', action="store_true", 
         dest="escapeQuotes", help="Escaping double quotes in the output")
     
+    
     parser.add_argument('--debug', action="store_true", help="Debug-oriented behaviour (with less error silencing)")
     return parser
 
@@ -237,7 +240,7 @@ def main(args=None):
     
     ## option 1 
     if args.extractJq:
-        mainExtractJqScripts(args.filepaths, args.output_file, args.escapeQuotes)
+        mainExtractJqScripts(args.filepaths, args.output_file, args.escapeQuotes, input_encoding=args.input_encoding, output_encoding=args.output_encoding)
         exit()
     
     ## option 2
@@ -248,14 +251,14 @@ def main(args=None):
     for i, path in enumerate(args.filepaths):
         print("%i / %i) Processing file at %s" % (i+1, len(args.filepaths), path))
         try:
-            with open(path, "r") as filehandle:
+            with open(path, "r", encoding=args.input_encoding) as filehandle:
                 outline = make_outline(filehandle, args.each_line, args.collection, args.sortKeys, args.dropRootKeys, True, args.jq_processing, args.fieldwise_jq_processing, args.no_duplicate_accessors)
                 outfile = args.output_file
                 if outfile is None:
                     fileName, fileExtension = os.path.splitext(filehandle.name)
                     outfile = fileName + '.outline.json'
 
-            with open(outfile, 'w') as f:
+            with open(outfile, 'w', encoding=args.output_encoding) as f:
                 json.dump(outline, f, indent=2, sort_keys=False)
         
         except (IndexError, KeyError, AttributeError) as err:

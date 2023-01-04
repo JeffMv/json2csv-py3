@@ -301,7 +301,7 @@ class Json2Csv(object):
         else:
             return str(item)
 
-    def write_csv(self, filename='output.csv', make_strings=False, write_header=True, delimiter=",", allow_empty=False):
+    def write_csv(self, filename='output.csv', make_strings=False, write_header=True, delimiter=",", allow_empty=False, output_encoding=None):
         """Write the processed rows to the given filename
         """
         if (len(self.rows) <= 0) and not allow_empty:
@@ -310,7 +310,7 @@ class Json2Csv(object):
             out = self.make_strings()
         else:
             out = self.rows
-        with open(filename, 'wb+') as f:
+        with open(filename, 'wb+', encoding=output_encoding) as f:
             header_columns = list(self.header_keys.keys())
             writer = csv.DictWriter(f, header_columns, delimiter=delimiter)
             if write_header:
@@ -384,6 +384,8 @@ def init_parser():
         help="Convert lists, sets, and dictionaries fully to comma-separated strings.")
     parser.add_argument('--no-header', action="store_true",
                         help="Process each line of JSON file separately")
+    parser.add_argument('--encoding', '--input-encoding', dest="input_encoding", help="Custom encoding to use when reading input files. Especially useful on Windows since an ANSI-compatible encoding might otherwise be used.")
+    parser.add_argument('--output-encoding', dest="output_encoding", help="Custom output file encoding")
     parser.add_argument('--verbose', type=int, default=0, help="Level of logs")
     
     
@@ -394,7 +396,7 @@ def init_parser():
     return parser
 
 
-def convert_json_to_csv(json_file, key_map, output_csv, no_header, make_strings, each_line, delimiter, allow_empty_output):
+def convert_json_to_csv(json_file, key_map, output_csv, no_header, make_strings, each_line, delimiter, allow_empty_output, output_encoding=None):
     special_inputs_map = {"\\t":"\t", "\\n":"\n"}
     csv_delimiter = special_inputs_map.get(delimiter, delimiter)
     
@@ -416,7 +418,7 @@ def convert_json_to_csv(json_file, key_map, output_csv, no_header, make_strings,
         if destdir:
             os.makedirs(destdir, exist_ok=True)
 
-        loader.write_csv(filename=outfile, make_strings=make_strings, write_header=not no_header, delimiter=csv_delimiter, allow_empty=allow_empty_output)
+        loader.write_csv(filename=outfile, make_strings=make_strings, write_header=not no_header, delimiter=csv_delimiter, allow_empty=allow_empty_output, output_encoding=output_encoding)
     except Exception as err:
         print("Error while processing file {}: [{}] {}".format(json_file.name, type(err), err))
         raise err
@@ -438,11 +440,11 @@ def main(args=None):
     for i, filepath in enumerate(args.input_json_files):
         output_filepath = output_paths[i]
         
-        with open(filepath, "r") as fileobject:
+        with open(filepath, "r", encoding=args.input_encoding) as fileobject:
             dt = datetime.datetime.today()
             s_time = "{:02}:{:02}:{:02}".format(dt.hour, dt.minute, dt.second)
             print("  {} / {} : {}  {}|  {}".format(i+1, len(args.input_json_files), fileobject.name, (("-> %s  "%output_filepath) if output_filepath else ""), s_time))
-            convert_json_to_csv(fileobject, key_map_content, output_filepath, args.no_header, args.strings, args.each_line, args.delimiter, args.allow_empty_file)
+            convert_json_to_csv(fileobject, key_map_content, output_filepath, args.no_header, args.strings, args.each_line, args.delimiter, args.allow_empty_file, output_encoding=args.output_encoding)
 
 if __name__ == '__main__':
     main()
