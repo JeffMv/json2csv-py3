@@ -1,4 +1,4 @@
-import json2csv
+from . import json2csv
 
 
 if __name__ == "__main__":  # pragma: no cov
