@@ -10,6 +10,7 @@ import operator
 import os
 import logging
 import datetime
+import glob  # Unix-like path matching
 
 from collections import OrderedDict
 from functools import reduce
@@ -435,20 +436,24 @@ def main(args=None):
     with open(args.key_map.name, "r", encoding=args.outline_encoding) as fh:
         key_map_content = json.loads(jsmin(fh.read()))
     
+    input_filepaths = glob.glob(args.input_json_files[0]) if len(args.input_json_files) == 1 else args.input_json_files
+    print(input_filepaths)
     
     if args.output_csv is None:
-        output_paths = [None for _ in args.input_json_files]
+        output_paths = [None for _ in input_filepaths]
     else:
-        output_paths = [get_filepath_formatted_from_filepath(args.output_csv, fp) for fp in args.input_json_files]
-    assert args.output_csv is None or len(set(output_paths)) == len(set(args.input_json_files)), "Mismatched number of input-output filepaths. Number of generated output paths ({}) must match number of input files to convert ({})".format(len(output_paths), len(args.input_json_files))
+        output_paths = [get_filepath_formatted_from_filepath(args.output_csv, fp) for fp in input_filepaths]
+    assert args.output_csv is None or len(set(output_paths)) == len(set(input_filepaths)), "Mismatched number of input-output filepaths. Number of generated output paths ({}) must match number of input files to convert ({})".format(len(output_paths), len(input_filepaths))
     
-    for i, filepath in enumerate(args.input_json_files):
+    
+    
+    for i, filepath in enumerate(input_filepaths):
         output_filepath = output_paths[i]
         
         with open(filepath, "r", encoding=args.input_encoding) as fileobject:
             dt = datetime.datetime.today()
             s_time = "{:02}:{:02}:{:02}".format(dt.hour, dt.minute, dt.second)
-            print("  {} / {} : {}  {}|  {}".format(i+1, len(args.input_json_files), fileobject.name, (("-> %s  "%output_filepath) if output_filepath else ""), s_time))
+            print("  {} / {} : {}  {}|  {}".format(i+1, len(input_filepaths), fileobject.name, (("-> %s  "%output_filepath) if output_filepath else ""), s_time))
             convert_json_to_csv(fileobject, key_map_content, output_filepath, args.no_header, args.strings, args.each_line, args.delimiter, args.allow_empty_file, output_encoding=args.output_encoding)
 
 if __name__ == '__main__':
