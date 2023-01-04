@@ -231,9 +231,9 @@ def init_parser():
     return parser
 
 
-def main():
+def main(args=None):
     parser = init_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(args)
     
     ## option 1 
     if args.extractJq:

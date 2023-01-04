@@ -423,9 +423,9 @@ def convert_json_to_csv(json_file, key_map, output_csv, no_header, make_strings,
     pass
 
 
-def main():
+def main(args=None):
     parser = init_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(args)
     
     key_map_content = json.loads(jsmin(args.key_map.read()))
     
