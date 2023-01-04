@@ -9,15 +9,15 @@ EXTRAS = {
 }
 
 setup(
-        name='json2csv',
-        version='0.2',
+        name='json2csv-py3',
+        version='0.2.1',
         modules=['json2csv'],
         scripts=['json2csv.py'],
-        url='https://github.com/evidens/json2csv',
+        url='https://github.com/JeffMv/json2csv-py3',
         license='MIT License',
         author='evidens',
         author_email='',
-        description='Converts JSON files to CSV (pulling data from nested structures). Useful for Mongo data. Original author: evidens. New features by @JeffMv (GitHub). @JeffreyMvutu (Twitter)',
+        description='Converts JSON files to CSV (pulling data from nested structures). Useful for Mongo data. Original author: evidens (https://github.com/evidens/json2csv). New features by @JeffMv (GitHub) - @JMMvutu (Twitter)',
         install_requires= [str(ir.req) for ir in parse_requirements('requirements.txt', session=uuid.uuid1())],
         extras_require=EXTRAS,
 )

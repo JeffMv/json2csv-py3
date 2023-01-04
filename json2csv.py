@@ -423,7 +423,7 @@ def convert_json_to_csv(json_file, key_map, output_csv, no_header, make_strings,
     pass
 
 
-if __name__ == '__main__':
+def main():
     parser = init_parser()
     args = parser.parse_args()
     
@@ -443,4 +443,6 @@ if __name__ == '__main__':
             s_time = "{:02}:{:02}:{:02}".format(dt.hour, dt.minute, dt.second)
             print("  {} / {} : {}  {}|  {}".format(i+1, len(args.input_json_files), fileobject.name, (("-> %s  "%output_filepath) if output_filepath else ""), s_time))
             convert_json_to_csv(fileobject, key_map_content, output_filepath, args.no_header, args.strings, args.each_line, args.delimiter, args.allow_empty_file)
-    
+
+if __name__ == '__main__':
+    main()
