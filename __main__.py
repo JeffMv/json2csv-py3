@@ -15,7 +15,6 @@ if __name__ == "__main__":  # pragma: no cov
     elif prog.strip().lower() in ["json2csv", "json2csv-py3", "j2c"]:
       json2csv.main(args[2:])  # pragma: no cov
     else:
-      # json2csv.main(args[1:])  # pragma: no cov
-      json2csv.main(args)  # pragma: no cov
+      json2csv.main(args[1:])  # pragma: no cov
     
       
