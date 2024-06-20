@@ -174,7 +174,12 @@ def mainExtractJqScripts(inputs, output, escapeQuotes, input_encoding=None, outp
 
 def init_parser():
     import argparse
-    parser = argparse.ArgumentParser(description="Generate an outline file for json2csv.py")
+    parser = argparse.ArgumentParser(description="Generate an outline file for json2csv.py",
+        epilog="""
+Usage example:
+    # opens the input file using utf-8 encoding. Depending on the structure of the input file, the resulting outline file will be different.
+    python gen_outline.py -o product-ratings.outline.json -d product-ratings.json --encoding utf8 --jq
+""")
     
     parser.add_argument('filepaths', nargs="+",
         help="Path to JSON data file to analyze")
